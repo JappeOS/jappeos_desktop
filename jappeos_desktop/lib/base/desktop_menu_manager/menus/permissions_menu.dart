@@ -26,8 +26,6 @@ class PermissionsMenu extends DesktopMenu {
 }
 
 class _PermissionsMenuState extends State<PermissionsMenu> {
-  static const kDefaultPadding = BPPresets.medium;
-
   final List<_ExpansionPanelListItem> _data = [
     _ExpansionPanelListItem(expandedValues: ["Google Chrome", "Discord"], headerValue: "Microphone", headerIcon: Icons.mic),
     _ExpansionPanelListItem(expandedValues: ["Google Chrome", "Discord"], headerValue: "Camera", headerIcon: Icons.camera),
@@ -35,12 +33,14 @@ class _PermissionsMenuState extends State<PermissionsMenu> {
 
   @override
   Widget build(BuildContext context) {
+    final defaultPadding = 4 * Theme.of(context).scaling;
+
     return DOverlayContainer(
       width: 300,
       height: 300,
       child: Padding(
-        padding: const EdgeInsets.all(kDefaultPadding),
-        child: SingleChildScrollView(
+        padding: EdgeInsets.all(defaultPadding),
+        child: const Placeholder() /* TODO: SingleChildScrollView(
           child: ExpansionPanelList(
             expansionCallback: (int index, bool isExpanded) {
               setState(() {
@@ -60,7 +60,7 @@ class _PermissionsMenuState extends State<PermissionsMenu> {
               );
             }).toList(),
           ),
-        ),
+        ),*/
       ),
     );
   }

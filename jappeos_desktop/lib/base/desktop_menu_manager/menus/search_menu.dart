@@ -26,10 +26,10 @@ class SearchMenu extends CenteredDesktopMenu {
 }
 
 class _SearchMenuState extends State<SearchMenu> {
-  static const kDefaultPadding = BPPresets.medium;
-
   @override
   Widget build(BuildContext context) {
+    final defaultPadding = 8 * Theme.of(context).scaling;
+
     return SizedBox(
       width: 525,
       height: MediaQuery.of(context).size.height / 2,
@@ -37,19 +37,17 @@ class _SearchMenuState extends State<SearchMenu> {
         children: [
           DOverlayContainer(
             child: Padding(
-              padding: const EdgeInsets.all(kDefaultPadding),
+              padding: EdgeInsets.all(defaultPadding),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const TextField(
-                    decoration: InputDecoration(
-                      hintText: "Search Files, Apps & More",
-                      prefixIcon: Icon(Icons.search),
-                    ),
+                    features: [InputFeature.leading(Icon(Icons.search))],
+                    hintText: "Search Files, Apps & More",
                     autofocus: true,
                   ),
                   const Divider(),
-                  Text("Results will be shown here.", style: Theme.of(context).textTheme.bodyMedium!.dim()),
+                  const Text("Results will be shown here.").medium().muted(),
                 ],
               ),
             ),

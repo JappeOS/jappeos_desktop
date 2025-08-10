@@ -55,20 +55,14 @@ class DesktopState extends State<Desktop> {
   Widget build(BuildContext context) {
     /*TODO: Remove*/ print("DESKTOP REBUILD");
 
-    final contextMenuEntries = <ContextMenuEntry>[
-      MenuItem(
-        label: 'Change Wallpaper',
-        icon: Icons.wallpaper,
-        onSelected: () {
-          // TODO
-        },
+    final contextMenuEntries = [
+      const MenuButton(
+        leading: Icon(Icons.wallpaper),
+        child: Text('Change Wallpaper'),
       ),
-      MenuItem(
-        label: 'Display Settings',
-        icon: Icons.display_settings,
-        onSelected: () {
-          // TODO
-        },
+      const MenuButton(
+        leading: Icon(Icons.display_settings),
+        child: Text('Display Settings'),
       ),
     ];
 
@@ -88,7 +82,7 @@ class DesktopState extends State<Desktop> {
       child: LoginScreen(usersList: const [ "Joe", "Mama" ], onLogin: (p0, p1) {auth.logIn(); return null;}) // TODO
     );
 
-    List<Widget> buildDesktopLayersUI(AuthProvider auth) {
+    List<Widget> buildDesktopLayersUI(BuildContext context, AuthProvider auth) {
       List<Widget> widgets = [
         if (!auth.isLoggedIn)
           buildLoginScreen(auth),
@@ -97,8 +91,8 @@ class DesktopState extends State<Desktop> {
           buildDock(),
           buildTopBar(),
         ],
-        if (_menuController.getWidget() != null)
-          _menuController.getWidget() as Widget
+        if (_menuController.getWidget(context) != null)
+          _menuController.getWidget(context) as Widget
       ];
 
       return widgets;
@@ -109,8 +103,8 @@ class DesktopState extends State<Desktop> {
       if (!renderGUI) return windowLayer;
       // ignore: curly_braces_in_flow_control_structures
       else return Scaffold(
-        body: ContextMenuRegion(
-          contextMenu: ContextMenu(entries: contextMenuEntries),
+        child: ContextMenu(
+          items: contextMenuEntries,
           child: Container(
             width: MediaQuery.of(context).size.width,
             height: MediaQuery.of(context).size.height,
@@ -128,7 +122,7 @@ class DesktopState extends State<Desktop> {
                 child: Consumer<AuthProvider>(
                   builder: (context, auth, child) {
                     return Stack(
-                      children: buildDesktopLayersUI(auth),
+                      children: buildDesktopLayersUI(context, auth),
                     );
                   }
                 ),
@@ -148,14 +142,22 @@ class DesktopState extends State<Desktop> {
           // TODO: Correctly integrate system text scaling by changing scales of icons and other UI elements with text.
           // Scale factor is overridden to 1.0 for the time being.
           data: mediaQuery.copyWith(textScaler: const TextScaler.linear(1.0)),
-          child: ShadeApp(
+          child: ShadcnApp(
             title: 'jappeos_desktop',
             debugShowCheckedModeBanner: false,
-            customThemeProperties: ShadeCustomThemeProperties(themeMode: ThemeMode.dark, primary: const Color.fromARGB(255, 173, 44, 100), accentifyColors: true),
-            providers: [
-              ListenableProvider<AuthProvider>(create: (_) => AuthProvider()),
-            ],
-            home: buildBase(),
+            theme: ThemeData(
+		          colorScheme: ColorSchemes.darkBlue(),
+		          radius: 0.9,
+              surfaceOpacity: 0.65,
+	            surfaceBlur: 9,
+	          ),
+            //customThemeProperties: ShadeCustomThemeProperties(themeMode: ThemeMode.dark, primary: const Color.fromARGB(255, 173, 44, 100), accentifyColors: true),
+            home: MultiProvider(
+              providers: [
+                ListenableProvider<AuthProvider>(create: (_) => AuthProvider()),
+              ],
+              child: buildBase(),
+            ),
           ),
         );
       }
@@ -178,11 +180,12 @@ class _DesktopWindowLayerState extends State<_DesktopWindowLayer> {
   // TODO: remove
   static WindowStackController? _wmController;
 
+  final GlobalKey<WindowNavigatorHandle> navigatorKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
-    _wmController ??= WindowStackController(() => setState(() {}));
-    _wmController!.onUpdate = () => setState(() {});
+    _wmController ??= WindowStackController(navigatorKey: navigatorKey);
     widget.onWmController(_wmController!);
   }
 

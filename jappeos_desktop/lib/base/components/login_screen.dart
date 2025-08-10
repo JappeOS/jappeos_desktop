@@ -82,12 +82,11 @@ class _LoginScreenState extends State<LoginScreen> {
     key: const ValueKey('main-page'),
     mainAxisAlignment: MainAxisAlignment.center,
     crossAxisAlignment: CrossAxisAlignment.center,
-    spacing: BPPresets.medium,
+    spacing: 8 * Theme.of(context).scaling,
     children: [
-      Text(
+      shui.Text(
         _timeString,
-        style: Theme.of(context).textTheme.displayMedium,
-      ),
+      ).x5Large(),
       TextAnimator(
         "Press any key to unlock.",
         atRestEffect: WidgetRestingEffects.wave(),
@@ -96,25 +95,22 @@ class _LoginScreenState extends State<LoginScreen> {
   );
 
   Widget _buildUsersList() => Center(
-    child: Material(
+    child: SizedBox(
       key: const ValueKey('users-list'),
-      color: Colors.transparent,
-      child: SizedBox(
-        width: 250,
-        child: ListView.builder(
-          shrinkWrap: true,
-          itemCount: widget.usersList.length,
-          itemBuilder: (context, index) => Padding(
-            padding: const EdgeInsets.only(left: BPPresets.small, right: BPPresets.small, bottom: BPPresets.small),
-            child: ListTile(
-              leading: const Icon(Icons.account_circle_rounded),
-              title: Text(widget.usersList[index]),
-              onTap: () => setState(() {
-                _currentPage = _Page.user;
-                _selectedUser = widget.usersList[index];
-                _beginBackToMainPageTimer();
-              }),
-            ),
+      width: 250,
+      child: ListView.builder(
+        shrinkWrap: true,
+        itemCount: widget.usersList.length,
+        itemBuilder: (context, index) => Padding(
+          padding: EdgeInsets.only(left: 4 * Theme.of(context).scaling, right: 4 * Theme.of(context).scaling, bottom: 4 * Theme.of(context).scaling),
+          child: GhostButton(
+            leading: const Icon(Icons.account_circle_rounded),
+            onPressed: () => setState(() {
+              _currentPage = _Page.user;
+              _selectedUser = widget.usersList[index];
+              _beginBackToMainPageTimer();
+            }),
+            child: Text(widget.usersList[index]),
           ),
         ),
       ),
@@ -130,24 +126,26 @@ class _LoginScreenState extends State<LoginScreen> {
         Icons.account_circle_rounded,
         size: 100,
       ),
-      const SizedBox(height: BPPresets.small),
+      SizedBox(height: 4 * Theme.of(context).scaling),
       Text(
         _selectedUser,
-        style: Theme.of(context).textTheme.headlineSmall,
-      ),
-      const SizedBox(height: BPPresets.medium),
+      ).h3(),
+      SizedBox(height: 8 * Theme.of(context).scaling),
       SizedBox(
         width: 250,
-        child: TextField(
-          decoration: InputDecoration(
+        child: TextField( // TODO: Error text
+          /*decoration: InputDecoration(
             hintText: "Password",
             errorText: _currentLoginError,
-          ),
+          ),*/
+          hintText: "Password",
+          placeholder: const Text("Password"),
           textAlign: TextAlign.center,
           obscureText: true,
           enableSuggestions: false,
           autocorrect: false,
           autofocus: true,
+          filled: true,
           onChanged: (str) {
             _currentPassword = str;
             _beginBackToMainPageTimer();
@@ -174,8 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
           });
         }
       },
-      child: ShadeContainer.transparent(
-        backgroundBlur: true,
+      child: DBlurContainer(
         child: _buildBase(switch (_currentPage) {
           _Page.main => _buildMainPage(),
           _Page.list => _buildUsersList(),

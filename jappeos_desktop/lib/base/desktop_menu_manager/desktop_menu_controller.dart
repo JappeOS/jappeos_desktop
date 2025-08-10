@@ -73,8 +73,8 @@ class DesktopMenuController {
     return false;
   }
 
-  Widget? getWidget() {
-    final double pad = _currentMenu is FullscreenDesktopMenu ? 0 : BPPresets.small;
+  Widget? getWidget(BuildContext context) {
+    final double pad = _currentMenu is FullscreenDesktopMenu ? 0 : 4 * Theme.of(context).scaling;
 
     LayoutBuilder base() {
       return LayoutBuilder(
@@ -140,11 +140,11 @@ class DesktopMenuController {
                   child: RepaintBoundary(
                     child: () {
                       if (_currentMenu is FullscreenDesktopMenu) {
-                        return ShadeContainer.transparent(
+                        return DualBorderOutlinedContainer(
                           width: _currentStackWSize.width,
                           height: (_currentStackWSize.height - DSKTP_UI_LAYER_TOPBAR_HEIGHT).clamp(0, double.infinity),
-                          backgroundBlur: true,
-                          padding: const EdgeInsets.all(BPPresets.small),
+                          //backgroundBlur: true,
+                          padding: EdgeInsets.all(4 * Theme.of(context).scaling),
                           child: _currentMenu as Widget,
                         );
                       }

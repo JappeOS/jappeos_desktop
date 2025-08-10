@@ -59,7 +59,7 @@ class _DApplicationItemState extends State<DApplicationItem> {
     final width = widget.showTitle ? 100 * widget.sizeFactor : 80 * widget.sizeFactor;
     final height = widget.showTitle ? null : 80 * widget.sizeFactor;
 
-    var iconSize = width - BPPresets.small * 1.25;
+    var iconSize = width - (4 * Theme.of(context).scaling) * 1.25;
 
     if (iconSize > 60) iconSize = 60;
 
@@ -68,7 +68,7 @@ class _DApplicationItemState extends State<DApplicationItem> {
       height: height,
       child: RepaintBoundary(
         child: Tooltip(
-          message: widget.title,
+          tooltip: (_) => Text(widget.title),
           child: MouseRegion(
             onEnter: (p0) => setState(() => _isHovered = true),
             onExit: (p0) => setState(() => _isHovered = false),
@@ -78,15 +78,15 @@ class _DApplicationItemState extends State<DApplicationItem> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: _isPressed ? pressedColor : (_isHovered ? hoveredColor : null),
-                  borderRadius: BorderRadius.circular(BPPresets.medium),
+                  borderRadius: BorderRadius.circular(8 * Theme.of(context).scaling),
                 ),
                 child: Padding(
-                  padding: widget.showTitle ? const EdgeInsets.symmetric(vertical: BPPresets.small) : EdgeInsets.zero,
+                  padding: widget.showTitle ? EdgeInsets.symmetric(vertical: 4 * Theme.of(context).scaling) : EdgeInsets.zero,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    spacing: BPPresets.small,
+                    spacing: 4 * Theme.of(context).scaling,
                     children: [
                       AnimatedScale(
                         scale: _isPressed ? 0.7 : 1,
@@ -99,11 +99,10 @@ class _DApplicationItemState extends State<DApplicationItem> {
                       ),
                       if (widget.showTitle) Text(
                         widget.title,
-                        style: Theme.of(context).textTheme.bodyMedium,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                         maxLines: 1,
-                      ),
+                      ).medium(),
                     ],
                   ),
                 ),
@@ -116,6 +115,7 @@ class _DApplicationItemState extends State<DApplicationItem> {
   }
 }
 
+// TODO
 /// A wrapper around [ShadeContainer] that is used for the overlays and menus of the desktop.
 class DOverlayContainer extends StatelessWidget {
   final double? width, height;
@@ -127,14 +127,14 @@ class DOverlayContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ShadeContainer.transparent(
+    return DualBorderOutlinedContainer(
       width: width,
       height: height,
       padding: padding,
-      border: ShadeContainerBorder.double,
-      borderRadius: increasedBorderRadius ? BPPresets.big : BPPresets.medium,
-      backgroundBlur: true,
-      elevation: 8,
+      surfaceOpacity: Theme.of(context).surfaceOpacity,
+      surfaceBlur: Theme.of(context).surfaceBlur,
+      borderRadius: increasedBorderRadius ? Theme.of(context).borderRadiusXl : Theme.of(context).borderRadiusLg,
+      //elevation: 8, TODO
       child: child,
     );
   }
@@ -222,29 +222,29 @@ class DTopbarButton extends StatefulWidget {
 class _DTopbarButtonState extends State<DTopbarButton> {
   static const double _kHeight = 26;
 
-  Offset globalPosition = Offset.zero;
+  Offset _globalPosition = Offset.zero;
 
-  bool hovering = false;
-  final borderRad = BorderRadius.circular(100);
-  final borderWidth = 1.0;
+  bool _hovering = false;
+  final _borderRad = BorderRadius.circular(100);
+  final _borderWidth = 1.0;
 
-  bool isMenuOpen = false;
+  bool _isMenuOpen = false;
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = Theme.of(context).colorScheme.primary;
-    final borderColor = Theme.of(context).colorScheme.outlineVariant;
-    final splashColor = accentColor.withValues(alpha: 0.25);
+    //final accentColor = Theme.of(context).colorScheme.primary;
+    final borderColor = Theme.of(context).colorScheme.border;
+    //final splashColor = accentColor.withValues(alpha: 0.25);
 
     return Container(
       margin: const EdgeInsets.only(left: 5, right: 5),
       alignment: widget.alignment,
       height: _kHeight,
       decoration: BoxDecoration(
-        borderRadius: borderRad,
-        color: Colors.transparent,
+        borderRadius: _borderRad,
+        color: _hovering || _isMenuOpen ? Theme.of(context).colorScheme.secondary.scaleAlpha(Theme.of(context).surfaceOpacity ?? 0) : Colors.transparent,
         border:
-            hovering || isMenuOpen ? Border.all(width: borderWidth, color: borderColor) : Border.all(width: borderWidth, color: Colors.transparent),
+            _hovering || _isMenuOpen ? Border.all(width: _borderWidth, color: borderColor) : Border.all(width: _borderWidth, color: Colors.transparent),
       ),
       child: RepaintBoundary(
         child: Builder(
@@ -256,39 +256,38 @@ class _DTopbarButtonState extends State<DTopbarButton> {
 
               // Get the global position of the widget
               final global = renderBox.localToGlobal(Offset.zero);
-              globalPosition = Offset(global.dx + renderBox.size.width / 2, global.dy);
+              _globalPosition = Offset(global.dx + renderBox.size.width / 2, global.dy);
             });
 
-            return Material(
-              color: isMenuOpen ? splashColor : Colors.transparent,
-              borderRadius: borderRad,
-              child: InkWell(
-                mouseCursor: SystemMouseCursors.basic,
-                hoverColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
-                splashColor: splashColor,
-                highlightColor: accentColor.withValues(alpha: 0.1),
-                overlayColor: WidgetStatePropertyAll(splashColor.withValues(alpha: 0.175)),
-                borderRadius: borderRad,
+            return MouseRegion(
+              onEnter: (value) => setState(() {
+                _hovering = true;
+              }),
+              onExit: (value) => setState(() {
+                _hovering = false;
+              }),
+              child: GestureDetector(
+                //color: isMenuOpen ? splashColor : Colors.transparent,
+                //borderRadius: borderRad,
+                behavior: HitTestBehavior.opaque,
                 onTap: () {
-                  setState(() => isMenuOpen = true);
+                  setState(() => _isMenuOpen = true);
                   widget.menuControllerRef.openMenu(
                     widget.menu,
-                    position: globalPosition,
+                    position: _globalPosition,
                     closeCallback: () {
-                      setState(() => isMenuOpen = false);
+                      setState(() => _isMenuOpen = false);
                     },
                   );
                 },
-                onHover: (value) => setState(() {
-                  hovering = value;
-                }),
+
                 child: SizedBox(height: _kHeight, child: Padding(
                   padding: const EdgeInsets.only(left: 5, right: 5),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    spacing: BPPresets.small / 2,
+                    spacing: (4 * Theme.of(context).scaling) / 2,
                     children: [
-                      if (widget.title != null) Text(widget.title!),
+                      if (widget.title != null) Text(widget.title!).small(),
                       ...widget.children,
                     ],
                   ),
@@ -311,13 +310,41 @@ class DMenuBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ShadeContainer.transparent(
+    return DualBorderOutlinedContainer(
       width: width,
       height: height,
-      backgroundBlur: true,
-      borderRadius: BPPresets.medium,
-      border: ShadeContainerBorder.double,
+      surfaceBlur: Theme.of(context).surfaceBlur,
+      surfaceOpacity: Theme.of(context).surfaceOpacity,
+      //backgroundBlur: true,
+      borderRadius: Theme.of(context).borderRadiusMd,
+      //border: ShadeContainerBorder.double,
       child: child,
+    );
+  }
+}
+
+/// A basic container widget that allows blur.
+class DBlurContainer extends StatelessWidget {
+  final Widget child;
+  final double? width, height;
+
+  const DBlurContainer({Key? key, required this.child, this.width, this.height}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.background.scaleAlpha(Theme.of(context).surfaceOpacity ?? 0),
+      ),
+      //backgroundBlur: true,
+      //borderRadius: Theme.of(context).borderRadiusMd,
+      //border: ShadeContainerBorder.double,
+      child: SurfaceBlur(
+        surfaceBlur: Theme.of(context).surfaceBlur,
+        child: child
+      ),
     );
   }
 }
@@ -352,12 +379,11 @@ class DWindowView extends StatefulWidget {
 }
 
 class _DWindowViewState extends State<DWindowView> {
-  static const kBorderRadius = BPPresets.medium;
-
-  bool isHovered = false;
+  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
+    final borderRadius = Theme.of(context).borderRadiusMd;
     final width = widget.height * widget.aspectRatio;
 
     return Column(
@@ -366,32 +392,25 @@ class _DWindowViewState extends State<DWindowView> {
         SizedBox(
           width: width,
           height: widget.height,
-          child: ShadeSelectionBorder(
-            borderRadius: BorderRadius.circular(kBorderRadius),
-            onHover: (p0) => setState(() => isHovered = p0),
-            isHighlighted: widget.isHighlighted,
-            child: Material(
-              color: Theme.of(context).colorScheme.surface,
-              child: InkWell(
-                mouseCursor: SystemMouseCursors.alias,
-                splashColor: Theme.of(context).splashColor,
-                onTap: widget.onPress,
-                child: widget.child?.call(isHovered),
-              ),
-            ),
+          child: SecondaryButton(
+            //borderRadius: borderRadius,
+            onHover: (p0) => setState(() => _isHovered = p0),
+            onPressed: widget.onPress,
+            //isHighlighted: widget.isHighlighted,
+            child: widget.child?.call(_isHovered) ?? const SizedBox.shrink(),
           ),
         ),
-        const SizedBox(height: BPPresets.small),
+        SizedBox(height: 4 * Theme.of(context).scaling),
         if (widget.isTitleEditable)
           ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: width,
             ),
-            child: IntrinsicWidth(child: ShadeEditableTextWidget(initialText: widget.title, onEditingComplete: widget.onTitleEdited, hintText: "Type Something...")),
+            child: IntrinsicWidth(/*child: ShadeEditableTextWidget(initialText: widget.title, onEditingComplete: widget.onTitleEdited, hintText: "Type Something...")*/), // TODO
           )
         else ...[
           const SizedBox(height: 11 / 2),
-          Text(widget.title, style: Theme.of(context).textTheme.bodyLarge),
+          Text(widget.title).large(),
           const SizedBox(height: 11 / 2),
         ]
       ],
@@ -427,7 +446,7 @@ class _DesktopDockState extends State<DesktopDock> {
           if (_showDock && widget.hasWindowIntersection) setState(() => _showDock = false);
         },
         child: Padding(
-          padding: _showDock ? const EdgeInsets.only(bottom: BPPresets.small) : EdgeInsets.zero,
+          padding: _showDock ? EdgeInsets.only(bottom: 4 * Theme.of(context).scaling) : EdgeInsets.zero,
           child: Row(
             children: [
               const Spacer(),
@@ -437,13 +456,13 @@ class _DesktopDockState extends State<DesktopDock> {
                 child: _showDock ? DOverlayContainer(
                   key: const ValueKey('dockShown'),
                   increasedBorderRadius: true,
-                  padding: const EdgeInsets.all(BPPresets.medium),
+                  padding: EdgeInsets.all(4 * Theme.of(context).scaling),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: List.generate(widget.items.length, (index) => DApplicationItem.icon(
                                   image: widget.items[index].$1, title: widget.items[index].$2, sizeFactor: 0.75, onPress: widget.items[index].$3)),
                   ),
-                ) : const SizedBox(key: ValueKey('dockHidden'), height: BPPresets.small),
+                ) : SizedBox(key: const ValueKey('dockHidden'), height: 2 * Theme.of(context).scaling),
               ),
               const Spacer(),
             ],
@@ -496,9 +515,7 @@ class _DesktopTopBarState extends State<DesktopTopBar> {
       left: 0,
       right: 0,
       height: DSKTP_UI_LAYER_TOPBAR_HEIGHT,
-      child: ShadeContainer.transparent(
-        border: ShadeContainerBorder.none,
-        backgroundBlur: true,
+      child: DBlurContainer(
         child: Row(
           children: [
             DTopbarButton.icon(icon: Icons.apps, menuControllerRef: widget.menuController, menu: LauncherMenu()),

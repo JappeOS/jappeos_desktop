@@ -31,6 +31,7 @@ class _ControlCenterWifiPageState extends State<_ControlCenterWifiPage> {
     return _ControlCenterPageBase(
       title: "Wi-Fi",
       body: ListView.builder(
+        shrinkWrap: false,
           itemCount: 5,
           itemBuilder: (context, index) {
             return _NetworkItem(ssid: "Network#$index");
@@ -56,17 +57,18 @@ class _NetworkItemState extends State<_NetworkItem> {
     final connectAction = isHovered ? () {} : null;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: BPPresets.small / 2),
+      padding: EdgeInsets.symmetric(vertical: (4 * Theme.of(context).scaling) / 2),
       child: MouseRegion(
         onEnter: (_) => setState(() => isHovered = true),
         onExit: (_) => setState(() => isHovered = false),
-        child: AdvancedContainer(
-          padding: const EdgeInsets.all(BPPresets.small),
+        child: Container(
+          color: Theme.of(context).colorScheme.card,
+          padding: EdgeInsets.all(4 * Theme.of(context).scaling),
           child: Row(children: [
             const Icon(Icons.wifi_lock),
-            const SizedBox(width: BPPresets.small),
+            SizedBox(width: 4 * Theme.of(context).scaling),
             Expanded(child: Text(widget.ssid)),
-            AnimatedOpacity(duration: const Duration(milliseconds: 100), opacity: isHovered ? 1.0 : 0.0, child: OutlinedButton(onPressed: connectAction, child: const Text("Connect"))),
+            AnimatedOpacity(duration: const Duration(milliseconds: 100), opacity: isHovered ? 1.0 : 0.0, child: OutlineButton(onPressed: connectAction, child: const Text("Connect"))),
           ]),
         ),
       ),

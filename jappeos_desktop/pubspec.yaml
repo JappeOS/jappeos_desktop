@@ -28,8 +28,8 @@ dependencies:
 
   shade_ui:
     git:
-      url: https://github.com/Jappe-OS/shade_ui.git
-      ref: master-2.0
+      url: https://github.com/JappeOS/shade_ui.git
+      ref: master
 
   # TODO
   #jdwm_flutter:

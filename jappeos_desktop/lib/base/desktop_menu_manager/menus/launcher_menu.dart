@@ -26,23 +26,12 @@ class LauncherMenu extends DesktopMenu {
 }
 
 class _LauncherMenuState extends State<LauncherMenu> {
-  static const kDefaultPadding = BPPresets.medium;
   final PageController _pageController = PageController();
   int _pageCount = 1;
 
   @override
   Widget build(BuildContext context) {
-    Widget controlButton(IconData icon, String tooltip, Function() onPress) {
-      return IconButton(
-        onPressed: onPress,
-        icon: Icon(
-          icon,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        tooltip: tooltip,
-        padding: const EdgeInsets.all(3),
-      );
-    }
+    final defaultPadding = 4 * Theme.of(context).scaling;
 
     Widget verticalIndicatorCircleBar(int count, int active) {
       List<Widget> circles = [];
@@ -52,7 +41,7 @@ class _LauncherMenuState extends State<LauncherMenu> {
           width: 5,
           height: 5,
           decoration: BoxDecoration(
-            color: i == active ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onBackground,
+            color: i == active ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.foreground,
             borderRadius: BorderRadius.circular(2.5),
           ),
         ));
@@ -78,11 +67,11 @@ class _LauncherMenuState extends State<LauncherMenu> {
           SizedBox(
               width: double.infinity,
               child: Container(
-                  margin: const EdgeInsets.all(kDefaultPadding),
-                  child: OutlinedButton(onPressed: () {}, child: const Text("Search Files, Apps & More")))),
+                  margin: EdgeInsets.all(defaultPadding),
+                  child: OutlineButton(onPressed: () {}, child: const Text("Search Files, Apps & More")))),
           Expanded(
             child: Container(
-              margin: const EdgeInsets.all(kDefaultPadding),
+              margin: EdgeInsets.all(defaultPadding),
               child: Row(
                 children: [
                   Expanded(
@@ -100,12 +89,12 @@ class _LauncherMenuState extends State<LauncherMenu> {
                                     image: SvgPicture.asset("resources/images/_icontheme/Default/apps/utilities-terminal.svg"),
                                     title: "Terminal",
                                     onPress: () {
-                                      DesktopState.getWmController()!.createWindow()
-                                        ..setResizable(true)
+                                      DesktopState.getWmController()!.createWindow();
+                                        /*..setResizable(true)
                                         ..setMinSize(Vector2(300, 300))
                                         ..setSize(Vector2(300, 300))
                                         ..setTitle("Window Title")
-                                        ..setBgRenderMode(BackgroundMode.blurredTransp);
+                                        ..setBgRenderMode(BackgroundMode.blurredTransp);*/
                                     }),
                                 DApplicationItem.iconWithTitle(
                                     image: SvgPicture.asset("resources/images/_icontheme/Default/apps/system-settings.svg"),
@@ -168,8 +157,8 @@ class _LauncherMenuState extends State<LauncherMenu> {
                       ],
                     ),
                   ),
-                  const SizedBox(
-                    width: kDefaultPadding,
+                  SizedBox(
+                    width: defaultPadding,
                   ),
                   verticalIndicatorCircleBar(_pageCount, 0),
                 ],

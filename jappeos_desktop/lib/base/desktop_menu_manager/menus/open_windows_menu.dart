@@ -35,11 +35,11 @@ class _OpenWindowsMenuState extends State<OpenWindowsMenu> {
       child: (isHovered) => Align(
         alignment: Alignment.topRight,
         child: Padding(
-          padding: const EdgeInsets.all(BPPresets.small),
+          padding: EdgeInsets.all(4 * Theme.of(context).scaling),
           child: AnimatedScale(
             scale: isHovered ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 100),
-            child: IconButton.filledTonal(onPressed: onDelete, icon: const Icon(Icons.delete), color: Colors.red, tooltip: "Delete Desktop"),
+            child: Tooltip(tooltip: (_) => const Text("Delete Desktop"), child: IconButton.destructive(onPressed: onDelete, icon: const Icon(Icons.delete))),
           ),
         ),
       ),
@@ -47,11 +47,11 @@ class _OpenWindowsMenuState extends State<OpenWindowsMenu> {
   }
 
   Widget windowItem(String title) {
-    Widget btn(bool isHovered, IconData icon, Color color, String tooltip) {
+    Widget btn(bool isHovered, IconData icon, String tooltip) {
       return AnimatedScale(
         scale: isHovered ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 100),
-        child: IconButton.filledTonal(onPressed: () {}, icon: Icon(icon), color: color, tooltip: tooltip),
+        child: Tooltip(tooltip: (_) => Text(tooltip), child: IconButton.secondary(onPressed: () {}, icon: Icon(icon))),
       );
     }
 
@@ -62,14 +62,14 @@ class _OpenWindowsMenuState extends State<OpenWindowsMenu> {
       isHighlighted: false,
       onPress: () {},
       child: (isHovered) => Padding(
-        padding: const EdgeInsets.all(BPPresets.small),
-        child: SpacedRow(
+        padding: EdgeInsets.all(4 * Theme.of(context).scaling),
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: BPPresets.small,
+          spacing: 4 * Theme.of(context).scaling,
           children: [
-            btn(isHovered, Icons.flip_to_front, Colors.green, "Bring to Front"),
-            btn(isHovered, Icons.close, Colors.red, "Close"),
+            btn(isHovered, Icons.flip_to_front, "Bring to Front"),
+            btn(isHovered, Icons.close, "Close"),
           ],
         ),
       ),
@@ -80,11 +80,11 @@ class _OpenWindowsMenuState extends State<OpenWindowsMenu> {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        AdvancedContainer(
-          padding: const EdgeInsets.all(BPPresets.medium),
-          borderRadius: BPPresets.big,
-          child: SpacedColumn(
-            spacing: BPPresets.medium,
+        SurfaceCard(
+          padding: EdgeInsets.all(4 * Theme.of(context).scaling),
+          borderRadius: BorderRadius.circular(Theme.of(context).radiusMd),
+          child: Column(
+            spacing: 4 * Theme.of(context).scaling,
             children: [
               const Spacer(),
               desktopItem("Desktop 1", true, () {}, () {}),
@@ -101,12 +101,12 @@ class _OpenWindowsMenuState extends State<OpenWindowsMenu> {
             ],
           ),
         ),
-        const SizedBox(width: BPPresets.small),
+        SizedBox(width: 4 * Theme.of(context).scaling),
         Expanded(
           child: Center(
             child: Wrap(
-              spacing: BPPresets.big,
-              runSpacing: BPPresets.big,
+              spacing: 8 * Theme.of(context).scaling,
+              runSpacing: 8 * Theme.of(context).scaling,
               alignment: WrapAlignment.center,
               children: [
                 windowItem("My First Window"),

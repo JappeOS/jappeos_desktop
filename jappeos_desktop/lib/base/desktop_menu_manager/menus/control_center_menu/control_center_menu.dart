@@ -18,7 +18,6 @@
 
 library;
 
-import 'package:flutter/material.dart';
 import 'package:jappeos_desktop/base/base.dart';
 import 'package:shade_ui/shade_ui.dart';
 
@@ -66,36 +65,35 @@ class _QuickActionItem extends StatefulWidget {
 class _QuickActionItemState extends State<_QuickActionItem> {
   @override
   Widget build(BuildContext context) {
-    final foregroundColor = widget.isSelected ? Theme.of(context).colorScheme.onPrimary : null;
+    //final foregroundColor = widget.isSelected ? Theme.of(context).colorScheme.foreground : null;
 
-    return SizedBox(
-      height: 46,
-      child: FilledButton(
+    return SecondaryButton(
         onPressed: () => widget.onSelectionChange?.call(widget.isSelected),
-        style: ButtonStyle(
+        /*style: ButtonStyle(
           backgroundColor: widget.isSelected ? WidgetStatePropertyAll(Theme.of(context).colorScheme.primary) : null,
           foregroundColor: WidgetStatePropertyAll(foregroundColor),
           shape: const WidgetStatePropertyAll(StadiumBorder()),
           padding: WidgetStatePropertyAll(
               EdgeInsets.only(left: BPPresets.medium / 4 * 3, right: widget.onAdditionalDetailsButtonPressed != null ? 0 : BPPresets.medium / 4 * 3)),
-        ),
+        ),*/
         child: Row(children: [
           Icon(widget.icon),
-          const SizedBox(width: BPPresets.small),
+          SizedBox(width: 8 * Theme.of(context).scaling),
           Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(widget.text, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: foregroundColor)),
-            Text(widget.isSelected.toString(), style: Theme.of(context).textTheme.bodySmall!.copyWith(color: foregroundColor)),
+            Text(widget.text).medium(),
+            Text(widget.isSelected.toString()).small(),
           ]),
           const Spacer(),
-          if (widget.onAdditionalDetailsButtonPressed != null) SizedBox.square(
-            dimension: 46,
-            child: IconButton(
+          if (widget.onAdditionalDetailsButtonPressed != null)
+            IconButton.secondary(
+              size: ButtonSize.normal,
+              density: ButtonDensity.iconDense,
               onPressed: widget.onAdditionalDetailsButtonPressed,
               icon: const Icon(Icons.arrow_forward_ios),
             ),
-          ),
+
         ]),
-      ),
+
     );
   }
 }
@@ -108,22 +106,22 @@ class _ControlCenterPageBase extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(backgroundColor: Theme.of(context).colorScheme.surface, child: Padding(
-      padding: const EdgeInsets.all(BPPresets.medium),
-      child: Column(
+    return AlertDialog(/*backgroundColor: Theme.of(context).colorScheme.surface,*/
+      content: Column(
+        mainAxisSize: MainAxisSize.max,
         children: [
           Row(children: [
-            IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.arrow_back)),
+            IconButton.secondary(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.arrow_back)),
             const Spacer(flex: 4),
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            Text(title).large(),
             const Spacer(flex: 5),
           ]),
-          const SizedBox(height: BPPresets.small),
+          SizedBox(height: 4 * Theme.of(context).scaling),
           //const Divider(),
           Expanded(child: body),
         ],
       ),
-    ),);
+    );
   }
 }
 
@@ -135,41 +133,41 @@ class _ControlCenterMainPage extends StatefulWidget {
 }
 
 class _ControlCenterMainPageState extends State<_ControlCenterMainPage> {
-  Widget cont(Widget child) {
+  /*Widget cont(Widget child) {
     return AdvancedContainer(
       height: 46,
-      padding: const EdgeInsets.symmetric(horizontal: BPPresets.small / 2),
+      padding: EdgeInsets.symmetric(horizontal: (4 * Theme.of(context).scaling) / 2),
       borderRadius: 100,
       child: child,
     );
-  }
+  }*/
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(BPPresets.medium),
+      padding: EdgeInsets.all(8 * Theme.of(context).scaling),
       child: IntrinsicWidth(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(mainAxisSize: MainAxisSize.min, children: [
-              IconButton.filledTonal(
-                icon: const Row(children: [
-                  SizedBox(width: BPPresets.small),
-                  Icon(Icons.battery_full),
-                  SizedBox(width: BPPresets.small),
-                  Text("100%"),
-                  SizedBox(width: BPPresets.small),
+              IconButton.secondary(
+                icon: Row(children: [
+                  SizedBox(width: 4 * Theme.of(context).scaling),
+                  const Icon(Icons.battery_full),
+                  SizedBox(width: 4 * Theme.of(context).scaling),
+                  const Text("100%"),
+                  SizedBox(width: 4 * Theme.of(context).scaling),
                 ],),
                 onPressed: () {},
               ),
               const Spacer(),
-              IconButton.filledTonal(icon: const Icon(Icons.settings), onPressed: () {}),
-              const SizedBox(width: BPPresets.small),
-              IconButton.filledTonal(icon: const Icon(Icons.power_settings_new), onPressed: () {}),
+              IconButton.secondary(icon: const Icon(Icons.settings), onPressed: () {}),
+              SizedBox(width: 4 * Theme.of(context).scaling),
+              IconButton.secondary(icon: const Icon(Icons.power_settings_new), onPressed: () {}),
             ]),
-            const SizedBox(height: BPPresets.medium),
+            SizedBox(height: 4 * Theme.of(context).scaling),
             Row(mainAxisSize: MainAxisSize.min, children: [
               Expanded(
                   child: _QuickActionItem(
@@ -177,33 +175,33 @@ class _ControlCenterMainPageState extends State<_ControlCenterMainPage> {
                       icon: Icons.wifi_rounded,
                       isSelected: true,
                       onSelectionChange: (p0) {},
-                      onAdditionalDetailsButtonPressed: () => showDialog(context: context, builder: (_) => const _ControlCenterWifiPage(), useRootNavigator: false))),
-              const SizedBox(width: BPPresets.small),
+                      onAdditionalDetailsButtonPressed: () => showDialog(context: context, fullScreen: true, builder: (_) => const _ControlCenterWifiPage(), useRootNavigator: false))),
+              SizedBox(width: 4 * Theme.of(context).scaling),
               Expanded(child: _QuickActionItem(text: "Bluetooth", icon: Icons.bluetooth_rounded, isSelected: false, onSelectionChange: (p0) {})),
             ]),
-            const SizedBox(height: BPPresets.small),
+            SizedBox(height: 4 * Theme.of(context).scaling),
             Row(mainAxisSize: MainAxisSize.min, children: [
               Expanded(child: _QuickActionItem(text: "Airplane Mode", icon: Icons.airplanemode_off, isSelected: false, onSelectionChange: (p0) {})),
-              const SizedBox(width: BPPresets.small),
+              SizedBox(width: 4 * Theme.of(context).scaling),
               Expanded(child: _QuickActionItem(text: "Do not Disturb", icon: Icons.do_not_disturb_on, isSelected: true, onSelectionChange: (p0) {})),
             ]),
-            const SizedBox(height: BPPresets.small),
+            SizedBox(height: 4 * Theme.of(context).scaling),
             Row(mainAxisSize: MainAxisSize.min, children: [
               Expanded(child: _QuickActionItem(text: "Dark Theme", icon: Icons.dark_mode_rounded, isSelected: true, onSelectionChange: (p0) {})),
-              const SizedBox(width: BPPresets.small),
+              SizedBox(width: 4 * Theme.of(context).scaling),
               Expanded(child: _QuickActionItem(text: "EN_US", icon: Icons.keyboard, isSelected: false, onSelectionChange: (p0) {})),
             ]),
-            const SizedBox(height: BPPresets.medium),
+            SizedBox(height: 4 * Theme.of(context).scaling),
             Row(mainAxisSize: MainAxisSize.max, children: [
-              IconButton(icon: const Icon(Icons.volume_up), onPressed: () {}),
-              Expanded(child: Slider(value: 0.5, onChanged: (p0) {})),
-              IconButton(icon: const Icon(Icons.arrow_drop_down), onPressed: () {}),
+              IconButton.ghost(icon: const Icon(Icons.volume_up), onPressed: () {}),
+              Expanded(child: Slider(value: const SliderValue.single(0.5), onChanged: (p0) {})),
+              IconButton.ghost(icon: const Icon(Icons.arrow_drop_down), onPressed: () {}),
             ]),
-            const SizedBox(height: BPPresets.small),
+            SizedBox(height: 4 * Theme.of(context).scaling),
             Row(mainAxisSize: MainAxisSize.min, children: [
-              IconButton(icon: const Icon(Icons.brightness_auto), onPressed: () {}),
-              Expanded(child: Slider(value: 0.5, onChanged: (p0) {})),
-              IconButton(icon: const Icon(Icons.arrow_drop_down), onPressed: () {}),
+              IconButton.ghost(icon: const Icon(Icons.brightness_auto), onPressed: () {}),
+              Expanded(child: Slider(value: const SliderValue.single(0.5), onChanged: (p0) {})),
+              IconButton.ghost(icon: const Icon(Icons.arrow_drop_down), onPressed: () {}),
             ]),
           ],
         ),

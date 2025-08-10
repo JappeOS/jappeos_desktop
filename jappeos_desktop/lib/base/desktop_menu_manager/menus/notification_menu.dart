@@ -26,37 +26,77 @@ class NotificationMenu extends DesktopMenu {
 }
 
 class _NotificationMenuState extends State<NotificationMenu> {
-  static const kDefaultPadding = BPPresets.medium;
+  CalendarValue? _value;
+  CalendarView _view = CalendarView.now();
 
   @override
   Widget build(BuildContext context) {
+    final defaultPadding = 4 * Theme.of(context).scaling;
+
+    Widget buildCalendar() => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            OutlineButton(
+              density: ButtonDensity.icon,
+              onPressed: () {
+                setState(() {
+                  _view = _view.previous;
+                });
+              },
+              child: const Icon(Icons.arrow_back).iconXSmall(),
+            ),
+            Text('${_view.month} ${_view.year}') // TODO: localizations.getMonth
+                .small()
+                .medium()
+                .center()
+                .expanded(),
+            OutlineButton(
+              density: ButtonDensity.icon,
+              onPressed: () {
+                setState(() {
+                  _view = _view.next;
+                });
+              },
+              child: const Icon(Icons.arrow_forward).iconXSmall(),
+            ),
+          ],
+        ),
+        const Gap(16),
+        Calendar(
+          value: _value,
+          view: _view,
+          onChanged: (value) {
+            setState(() {
+              _value = value;
+            });
+          },
+          selectionMode: CalendarSelectionMode.range,
+        ),
+      ],
+    );
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         DOverlayContainer(
           width: 400,
-          padding: const EdgeInsets.all(kDefaultPadding),
-          child: Material(
-            color: Colors.transparent,
-            child: CalendarDatePicker(
-              initialDate: DateTime.now(),
-              firstDate: DateTime(2000),
-              lastDate: DateTime(9000),
-              onDateChanged: (p0) {},
-            ),
-          ),
+          padding: EdgeInsets.all(defaultPadding),
+          child: buildCalendar(),
         ),
-        const SizedBox(height: kDefaultPadding),
+        SizedBox(height: defaultPadding),
         DOverlayContainer(
           width: 400,
-          padding: const EdgeInsets.all(kDefaultPadding),
+          padding: EdgeInsets.all(defaultPadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: BPPresets.small,
+            spacing: 4 * Theme.of(context).scaling,
             children: [
               _NotificationCard.media(title: "YouTube", contentText: "YouTube Video\nYouTube Channel\nSomething"),
               _NotificationCard.basic(title: "Notification", contentText: "Hello, World!", actions: [("Dismiss", () {}), ("Do Something", () {})]),
-              OutlinedButton(onPressed: () {}, child: const Text("Clear All")),
+              OutlineButton(onPressed: () {}, child: const Text("Clear All")),
             ],
           ),
         ),
@@ -92,8 +132,8 @@ class _NotificationCardState extends State<_NotificationCard> {
   Widget _iconButton(IconData icon, void Function() onPressed) => IconButton(
     onPressed: onPressed,
     icon: _hovered ? Icon(icon) : const SizedBox.shrink(),
-    iconSize: 20,
-    visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+    size: ButtonSize.small,
+    variance: ButtonVariance.secondary,
   );
 
   Widget _arrowIconButton(void Function() onPressed) => IconButton(
@@ -106,8 +146,8 @@ class _NotificationCardState extends State<_NotificationCard> {
         child: const Icon(Icons.keyboard_arrow_down),
       ) :
       const SizedBox.shrink(),
-    iconSize: 20,
-    visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+    size: ButtonSize.small,
+    variance: ButtonVariance.secondary,
   );
 
   @override
@@ -129,51 +169,51 @@ class _NotificationCardState extends State<_NotificationCard> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         alignment: Alignment.topCenter,
-        child: FilledButton(
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: BPPresets.medium, vertical: BPPresets.medium * 1.1),
-            shape: RoundedRectangleBorder(side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant), borderRadius: BorderRadius.circular(BPPresets.small)),
-          ),
+        child: SecondaryButton(
+          /*style: FilledButton.styleFrom( TODO
+            padding: EdgeInsets.symmetric(horizontal: 4 * Theme.of(context).scaling, vertical: 4 * Theme.of(context).scaling * 1.1),
+            shape: RoundedRectangleBorder(side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant), borderRadius: BorderRadius.circular(4 * Theme.of(context).scaling)),
+          ),*/
           onPressed: () {},
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: BPPresets.small,
+            spacing: 4 * Theme.of(context).scaling,
             children: [
               SizedBox(
-                height: kButtonHeight / 1.25,
+                height: 35 / 1.25,
                 child: Row(
-                  spacing: BPPresets.small,
+                  spacing: 4 * Theme.of(context).scaling,
                   children: [
-                    Icon(Icons.settings, size: 20, color: Theme.of(context).iconTheme.color?.dim()),
-                    Expanded(child: Text(widget.source, style: Theme.of(context).textTheme.bodyMedium?.dim())),
+                    const Icon(Icons.settings, size: 20).muted(),
+                    Expanded(child: Text(widget.source).muted()),
                     if (isExpandable) _arrowIconButton(() => setState(() => _expanded = !_expanded)),
                     if (!widget.isMedia) _iconButton(Icons.close, () {}),
                   ],
                 ),
               ),
               Row(
-                spacing: BPPresets.small,
+                spacing: 4 * Theme.of(context).scaling,
                 children: [
                   SizedBox.square(dimension: 50, child: Container(color: Colors.black)),
                   Expanded(
                     child: Text(
                       widget.contentText,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).typography.medium,
                       textAlign: TextAlign.left,
                       overflow: TextOverflow.ellipsis,
                       maxLines: 3,
                     ),
                   ),
                   if (widget.isMedia) ... [
-                    IconButton(onPressed: () {}, icon: const Icon(Icons.skip_previous)),
-                    IconButton.filledTonal(onPressed: () {}, icon: const Icon(Icons.play_arrow)),
-                    IconButton(onPressed: () {}, icon: const Icon(Icons.skip_next)),
+                    IconButton(onPressed: () {}, icon: const Icon(Icons.skip_previous), variance: ButtonVariance.ghost),
+                    IconButton(onPressed: () {}, icon: const Icon(Icons.play_arrow), variance: ButtonVariance.secondary),
+                    IconButton(onPressed: () {}, icon: const Icon(Icons.skip_next), variance: ButtonVariance.ghost),
                   ],
                 ],
               ),
               if (_expanded) Row(
-                spacing: BPPresets.small,
+                spacing: 4 * Theme.of(context).scaling,
                 children: List.generate(widget.actions.length, (index) => Expanded(
                   child: TextButton(
                     onPressed: widget.actions[index].$2,
