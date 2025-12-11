@@ -32,7 +32,7 @@ dependencies:
   #    ref: master
 
   shade_ui:
-    path: ../../../shade_ui
+    path: ../shade_ui
 
   # TODO
   #jdwm_flutter:
@@ -42,7 +42,7 @@ dependencies:
   #    path: jdwm_flutter
   ### TODO
   jdwm_flutter:
-    path: ../../../JDWM/jdwm_flutter
+    path: ../JDWM/jdwm_flutter
 
   flutter_menu: ^0.4.1
   provider: ^6.0.3
