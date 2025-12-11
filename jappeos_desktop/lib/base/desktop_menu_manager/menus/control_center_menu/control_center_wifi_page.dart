@@ -31,7 +31,6 @@ class _ControlCenterWifiPageState extends State<_ControlCenterWifiPage> {
     return _ControlCenterPageBase(
       title: "Wi-Fi",
       body: ListView.builder(
-        shrinkWrap: false,
           itemCount: 5,
           itemBuilder: (context, index) {
             return _NetworkItem(ssid: "Network#$index");

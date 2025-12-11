@@ -26,10 +26,13 @@ dependencies:
   flutter:
     sdk: flutter
 
+  #shade_ui:
+  #  git:
+  #    url: https://github.com/JappeOS/shade_ui.git
+  #    ref: master
+
   shade_ui:
-    git:
-      url: https://github.com/JappeOS/shade_ui.git
-      ref: master
+    path: ../../../shade_ui
 
   # TODO
   #jdwm_flutter:

@@ -146,9 +146,9 @@ class DesktopState extends State<Desktop> {
             title: 'jappeos_desktop',
             debugShowCheckedModeBanner: false,
             theme: ThemeData(
-		          colorScheme: ColorSchemes.darkBlue(),
+		          colorScheme: ColorSchemes.darkDefaultColor,
 		          radius: 0.9,
-              surfaceOpacity: 0.65,
+              surfaceOpacity: 0.85,
 	            surfaceBlur: 9,
 	          ),
             //customThemeProperties: ShadeCustomThemeProperties(themeMode: ThemeMode.dark, primary: const Color.fromARGB(255, 173, 44, 100), accentifyColors: true),

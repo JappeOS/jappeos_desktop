@@ -107,8 +107,8 @@ class _ControlCenterPageBase extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(/*backgroundColor: Theme.of(context).colorScheme.surface,*/
-      content: Column(
-        mainAxisSize: MainAxisSize.max,
+      content: ConstrainedBox(constraints: const BoxConstraints(maxHeight: 400), child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(children: [
             IconButton.secondary(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.arrow_back)),
@@ -118,9 +118,9 @@ class _ControlCenterPageBase extends StatelessWidget {
           ]),
           SizedBox(height: 4 * Theme.of(context).scaling),
           //const Divider(),
-          Expanded(child: body),
+          Flexible(child: body),
         ],
-      ),
+      ),),
     );
   }
 }
@@ -175,7 +175,7 @@ class _ControlCenterMainPageState extends State<_ControlCenterMainPage> {
                       icon: Icons.wifi_rounded,
                       isSelected: true,
                       onSelectionChange: (p0) {},
-                      onAdditionalDetailsButtonPressed: () => showDialog(context: context, fullScreen: true, builder: (_) => const _ControlCenterWifiPage(), useRootNavigator: false))),
+                      onAdditionalDetailsButtonPressed: () => showDialog(context: context, builder: (_) => const _ControlCenterWifiPage(), useRootNavigator: false))),
               SizedBox(width: 4 * Theme.of(context).scaling),
               Expanded(child: _QuickActionItem(text: "Bluetooth", icon: Icons.bluetooth_rounded, isSelected: false, onSelectionChange: (p0) {})),
             ]),

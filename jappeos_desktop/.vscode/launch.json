@@ -8,6 +8,18 @@
             "name": "jappeos_desktop",
             "request": "launch",
             "type": "dart"
+        },
+        {
+            "name": "jappeos_desktop (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "jappeos_desktop (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
         }
     ]
 }
