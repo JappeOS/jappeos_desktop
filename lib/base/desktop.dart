@@ -20,13 +20,12 @@ part of jappeos_desktop.base;
 
 /// The stateful widget for the base desktop UI.
 class Desktop extends StatefulWidget {
-  const Desktop({Key? key}) : super(key: key);
+  const Desktop({super.key});
 
   @override
   DesktopState createState() => DesktopState();
 }
 
-// TODO: Split parts of desktop into their own widgets.
 /// This is the public class for the JappeOS Desktop, the `wmController` object can be accessed for using the windowing system.
 ///
 /// See [WmController] for more information on the windowing system.
@@ -39,11 +38,12 @@ class DesktopState extends State<Desktop> {
 
   late final DesktopMenuController _menuController;
 
-  final shortcuts = <LogicalKeySet, Intent>{
-    LogicalKeySet(LogicalKeyboardKey.alt, LogicalKeyboardKey.tab): const SwitchWindowIntent(),
+  final _shortcuts = <LogicalKeySet, Intent>{
+    LogicalKeySet(LogicalKeyboardKey.alt, LogicalKeyboardKey.tab):
+        const SwitchWindowIntent(),
   };
 
-  final actions = const <Type, Action<Intent>>{};
+  final _actions = const <Type, Action<Intent>>{};
 
   @override
   void initState() {
@@ -53,9 +53,125 @@ class DesktopState extends State<Desktop> {
 
   @override
   Widget build(BuildContext context) {
-    /*TODO: Remove*/ print("DESKTOP REBUILD");
+    // TODO
+    //if (!renderGUI) {
+    //  return _DesktopWindowLayer(onWmController: (p) => _wmController = p);
+    //}
 
-    final contextMenuEntries = [
+    return _buildFullDesktop(context);
+  }
+
+  Widget _buildFullDesktop(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+
+    return MediaQuery(
+      // TODO: Correctly integrate system text scaling by changing scales of icons and other UI elements with text.
+      data: mediaQuery.copyWith(textScaler: const TextScaler.linear(1.0)),
+      child: ShadcnApp(
+        title: 'jappeos_desktop',
+        debugShowCheckedModeBanner: false,
+        theme: const ThemeData(
+          colorScheme: ColorSchemes.darkOrange,
+          radius: 0.9,
+          surfaceOpacity: 0.85,
+          surfaceBlur: 9,
+        ),
+        home: MultiProvider(
+          providers: [
+            ListenableProvider<AuthProvider>(create: (_) => AuthProvider()),
+          ],
+          child: _DesktopScaffoldNew(
+            menuController: _menuController,
+            shortcuts: _shortcuts,
+            actions: _actions,
+            onWmController: (p) => _wmController = p,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopScaffoldNew extends StatefulWidget {
+  final DesktopMenuController menuController;
+  final Map<LogicalKeySet, Intent> shortcuts;
+  final Map<Type, Action<Intent>> actions;
+  final void Function(WindowStackController) onWmController;
+
+  const _DesktopScaffoldNew({
+    required this.menuController,
+    required this.shortcuts,
+    required this.actions,
+    required this.onWmController,
+  });
+
+  @override
+  _DesktopScaffoldNewState createState() => _DesktopScaffoldNewState();
+}
+
+/// Internal scaffold widget for the desktop UI
+class _DesktopScaffoldNewState extends State<_DesktopScaffoldNew> {
+  late final WindowStackController _wmController;
+
+  @override
+  void initState() {
+    super.initState();
+    _wmController = WindowStackController();
+    widget.onWmController(_wmController);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      child: Shortcuts(
+        shortcuts: widget.shortcuts,
+        child: Actions(
+          actions: widget.actions,
+          child: DesktopBase(
+            wmConfig: WmConfig(
+              dynamicMonitorInsets: const EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT),
+              wmController: _wmController,
+            ),
+            monitorConfig: MonitorConfig(
+              monitors: [
+                Monitor(id: "a", name: "First Monitor",  x: 0,   y: 0,   width: 960, height: 540, insets: const EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT), isPrimary: true),
+                Monitor(id: "b", name: "Second Monitor", x: 960, y: 0,   width: 960, height: 540,                                                                   isPrimary: false),
+                Monitor(id: "c", name: "Third Monitor",  x: 0,   y: 540, width: 960, height: 540,                                                                   isPrimary: false),
+              ],
+            ),
+            monitorBuilder: (context, monitor) => Consumer<AuthProvider>(
+              builder: (context, auth, _) {
+                if (!auth.isLoggedIn) {
+                  return _buildLoginScreen(auth); // TODO: Handle multiple monitors
+                }
+                return ContextMenu(
+                  items: _buildContextMenuItems(),
+                  child: Container(
+                    width: monitor.width.toDouble(),
+                    height: monitor.height.toDouble(),
+                    decoration: const BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage(DSKTP_UI_LAYER_BACKGROUND_WALLPAPER_DIR),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            monitorOverlayBuilder: (context, monitor) => monitor.isPrimary ? Consumer<AuthProvider>(
+              builder: (context, auth, _) => Stack(
+                children: _buildDesktopOverlayLayers(context, auth),
+              ),
+            ) : const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<MenuItem> _buildContextMenuItems() {
+    return [
       const MenuButton(
         leading: Icon(Icons.wallpaper),
         child: Text('Change Wallpaper'),
@@ -65,137 +181,54 @@ class DesktopState extends State<Desktop> {
         child: Text('Display Settings'),
       ),
     ];
+  }
 
-    final windowLayer = _DesktopWindowLayer(onWmController: (p) => _wmController = p);
-
-    Widget buildDock() => DesktopDock(
-      hasWindowIntersection: false,
-      items: [
-        (SvgPicture.asset("resources/images/_icontheme/Default/apps/development-appmaker.svg"), "App Maker", () {}),
-        (SvgPicture.asset("resources/images/_icontheme/Default/apps/accessories-calculator.svg"), "Calculator", () {}),
+  List<Widget> _buildDesktopOverlayLayers(BuildContext context, AuthProvider auth) {
+    return [
+      if (auth.isLoggedIn) ...[
+        _buildDock(),
+        _buildTopBar(),
       ],
-    );
-
-    Widget buildTopBar() => DesktopTopBar(menuController: _menuController);
-
-    Widget buildLoginScreen(AuthProvider auth) => Positioned.fill(
-      child: LoginScreen(usersList: const [ "Joe", "Mama" ], onLogin: (p0, p1) {auth.logIn(); return null;}) // TODO
-    );
-
-    List<Widget> buildDesktopLayersUI(BuildContext context, AuthProvider auth) {
-      List<Widget> widgets = [
-        if (!auth.isLoggedIn)
-          buildLoginScreen(auth),
-        windowLayer,
-        if (auth.isLoggedIn) ... [
-          buildDock(),
-          buildTopBar(),
-        ],
-        if (_menuController.getWidget(context) != null)
-          _menuController.getWidget(context) as Widget
-      ];
-
-      return widgets;
-    }
-
-    Widget buildBase() {
-      // ignore: curly_braces_in_flow_control_structures
-      if (!renderGUI) return windowLayer;
-      // ignore: curly_braces_in_flow_control_structures
-      else return Scaffold(
-        child: ContextMenu(
-          items: contextMenuEntries,
-          child: Container(
-            width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height,
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                // The desktop background image.
-                image: AssetImage(DSKTP_UI_LAYER_BACKGROUND_WALLPAPER_DIR),
-                fit: BoxFit.cover,
-              ),
-            ),
-            child: Shortcuts(
-              shortcuts: shortcuts,
-              child: Actions(
-                actions: actions,
-                child: Consumer<AuthProvider>(
-                  builder: (context, auth, child) {
-                    return Stack(
-                      children: buildDesktopLayersUI(context, auth),
-                    );
-                  }
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Desktop UI.
-    return Builder(
-      builder: (context) {
-        // Capture the original MediaQuery
-        final mediaQuery = MediaQuery.of(context);
-        return MediaQuery(
-          // TODO: Correctly integrate system text scaling by changing scales of icons and other UI elements with text.
-          // Scale factor is overridden to 1.0 for the time being.
-          data: mediaQuery.copyWith(textScaler: const TextScaler.linear(1.0)),
-          child: ShadcnApp(
-            title: 'jappeos_desktop',
-            debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-		          colorScheme: ColorSchemes.darkDefaultColor,
-		          radius: 0.9,
-              surfaceOpacity: 0.85,
-	            surfaceBlur: 9,
-	          ),
-            //customThemeProperties: ShadeCustomThemeProperties(themeMode: ThemeMode.dark, primary: const Color.fromARGB(255, 173, 44, 100), accentifyColors: true),
-            home: MultiProvider(
-              providers: [
-                ListenableProvider<AuthProvider>(create: (_) => AuthProvider()),
-              ],
-              child: buildBase(),
-            ),
-          ),
-        );
-      }
-    );
-  }
-}
-
-/// The layer of the desktop where windows can be moved around.
-class _DesktopWindowLayer extends StatefulWidget {
-  const _DesktopWindowLayer({Key? key, required this.onWmController}) : super(key: key);
-
-  final void Function(WindowStackController) onWmController;
-
-  @override
-  _DesktopWindowLayerState createState() => _DesktopWindowLayerState();
-}
-
-class _DesktopWindowLayerState extends State<_DesktopWindowLayer> {
-  // Create a new instance of [WmController].
-  // TODO: remove
-  static WindowStackController? _wmController;
-
-  final GlobalKey<WindowNavigatorHandle> navigatorKey = GlobalKey();
-
-  @override
-  void initState() {
-    super.initState();
-    _wmController ??= WindowStackController(navigatorKey: navigatorKey);
-    widget.onWmController(_wmController!);
+      if (widget.menuController.getWidget(context) != null)
+        widget.menuController.getWidget(context)!,
+    ];
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildLoginScreen(AuthProvider auth) {
     return Positioned.fill(
-      child: WindowStack(
-        wmController: _wmController,
-        insets: const EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT),
+      child: LoginScreen(
+        usersList: const ["Joe", "Mama"], // TODO
+        onLogin: (p0, p1) {
+          auth.logIn();
+          return null;
+        },
       ),
     );
+  }
+
+  Widget _buildDock() {
+    return DesktopDock(
+      hasWindowIntersection: false,
+      items: [
+        (
+          SvgPicture.asset(
+            "resources/images/_icontheme/Default/apps/development-appmaker.svg"
+          ),
+          "App Maker",
+          () {}
+        ),
+        (
+          SvgPicture.asset(
+            "resources/images/_icontheme/Default/apps/accessories-calculator.svg"
+          ),
+          "Calculator",
+          () {}
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTopBar() {
+    return DesktopTopBar(menuController: widget.menuController);
   }
 }
