@@ -19,7 +19,7 @@
 library;
 
 import 'package:jappeos_desktop/base/base.dart';
-import 'package:shade_ui/shade_ui.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 part 'control_center_wifi_page.dart';
 
