@@ -21,38 +21,34 @@ google_sign_in_web: ^0.9.1
 environment:
   sdk: ">=3.0.0 <4.0.0"
 
-
 dependencies:
   flutter:
     sdk: flutter
 
-  #shade_ui:
-  #  git:
-  #    url: https://github.com/JappeOS/shade_ui.git
-  #    ref: master
+  shadcn_flutter:
+    git:
+      url: https://github.com/JappeOS/shadcn_flutter.git
+      ref: master
 
-  shade_ui:
-    path: ../shade_ui
-
-  # TODO
-  #jdwm_flutter:
-  #  git:
-  #    url: https://github.com/JappeOS/JDWM.git
-  #    ref: main
-  #    path: jdwm_flutter
-  ### TODO
   jdwm_flutter:
-    path: ../JDWM/jdwm_flutter
+    git:
+      url: https://github.com/JappeOS/JDWM.git
+      ref: main
+      path: jdwm_flutter
+
+  jappeos_desktop_base:
+    git:
+      url: https://github.com/JappeOS/jappeos_desktop_base.git
+      ref: main
 
   flutter_menu: ^0.4.1
   provider: ^6.0.3
   event: ^3.1.0
-  flutter_code_editor: ^0.2.23
   highlight: ^0.7.0
   flutter_svg: ^2.0.6
   vector_math: ^2.1.4
   davinci: ^2.1.1
-  http: ^0.13.6
+  http: ^1.0.0
   args: ^2.5.0
   intl: ^0.20.2
   widget_and_text_animator: ^1.1.5
