@@ -23,12 +23,12 @@ import 'package:flutter/material.dart' show ListTile;
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:jappeos_desktop/base/provider/auth_provider.dart';
+import 'package:jappeos_desktop_base/jappeos_desktop_base.dart';
 import 'package:jdwm_flutter/jdwm_flutter.dart';
-import 'package:jdwm_flutter/widgets/window_ui.dart';
 import 'package:provider/provider.dart';
 
-import 'package:shade_ui/shade_ui.dart';
-import 'package:shade_ui/shade_ui.dart' as shui;
+import 'package:shadcn_flutter/shadcn_flutter.dart' hide Monitor;
+import 'package:shadcn_flutter/shadcn_flutter.dart' as shui;
 import 'package:vector_math/vector_math.dart' hide Colors;
 import 'package:intl/intl.dart';
 import 'package:widget_and_text_animator/widget_and_text_animator.dart';
