@@ -1,5 +1,5 @@
 //  JappeOS-Desktop, The desktop environment for JappeOS.
-//  Copyright (C) 2025  Jappe02
+//  Copyright (C) 2026  The JappeOS team.
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU Affero General Public License as
@@ -18,7 +18,33 @@
 
 part of jappeos_desktop.base;
 
-class LauncherMenu extends DesktopMenu {
+class LauncherMenuEntry extends DesktopMenuEntry {
+  @override
+  String get id => 'launcher';
+
+  @override
+  DesktopMenuEntryType get type => DesktopMenuEntryType.launcher;
+
+  @override
+  String get label => 'Launcher';
+
+  @override
+  LogicalKeySet? get shortcut => LogicalKeySet(
+    LogicalKeyboardKey.superKey,
+  );
+
+  @override
+  List<Widget> buildIcon(BuildContext context) {
+    return const [Icon(Icons.apps)];
+  }
+
+  @override
+  DesktopMenu createMenu() {
+    return LauncherMenu();
+  }
+}
+
+class LauncherMenu extends CenteredDesktopMenu {
   LauncherMenu({Key? key}) : super(key: key);
 
   @override
@@ -31,9 +57,9 @@ class _LauncherMenuState extends State<LauncherMenu> {
 
   @override
   Widget build(BuildContext context) {
-    final defaultPadding = 4 * Theme.of(context).scaling;
+    final defaultPadding = 8 * Theme.of(context).scaling;
 
-    Widget verticalIndicatorCircleBar(int count, int active) {
+    Widget horizontalIndicatorCircleBar(int count, int active) {
       List<Widget> circles = [];
 
       for (int i = 0; i < count; i++) {
@@ -53,7 +79,7 @@ class _LauncherMenuState extends State<LauncherMenu> {
         }
       }
 
-      return Column(
+      return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: circles,
       );
@@ -61,18 +87,22 @@ class _LauncherMenuState extends State<LauncherMenu> {
 
     return DOverlayContainer(
       width: 500,
-      height: 500,
+      height: 400,
       child: Column(
         children: [
           SizedBox(
               width: double.infinity,
               child: Container(
                   margin: EdgeInsets.all(defaultPadding),
-                  child: OutlineButton(onPressed: () {}, child: const Text("Search Files, Apps & More")))),
+                  child: const TextField(
+                    features: [InputFeature.leading(Icon(Icons.search))],
+                    hintText: "Search Files, Apps & More",
+                    autofocus: true,
+                  ))),
           Expanded(
             child: Container(
               margin: EdgeInsets.all(defaultPadding),
-              child: Row(
+              child: Column(
                 children: [
                   Expanded(
                     child: PageView(
@@ -89,7 +119,15 @@ class _LauncherMenuState extends State<LauncherMenu> {
                                     image: SvgPicture.asset("resources/images/_icontheme/Default/apps/utilities-terminal.svg"),
                                     title: "Terminal",
                                     onPress: () {
-                                      DesktopState.getWmController()!.createWindow();
+                                      DesktopState.getWmController()!.pushWindow(
+                                        WindowEntry(
+                                          icon: const NetworkImage(
+                                            "https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcR1HDcyXu9SHC4glO2kFKjVhcy9kU6Q1S9T2g&usqp=CAU",
+                                          ),
+                                          title: "Example",
+                                          content: const Placeholder(),
+                                        ),
+                                      );
                                         /*..setResizable(true)
                                         ..setMinSize(Vector2(300, 300))
                                         ..setSize(Vector2(300, 300))
@@ -158,9 +196,9 @@ class _LauncherMenuState extends State<LauncherMenu> {
                     ),
                   ),
                   SizedBox(
-                    width: defaultPadding,
+                    height: defaultPadding,
                   ),
-                  verticalIndicatorCircleBar(_pageCount, 0),
+                  horizontalIndicatorCircleBar(_pageCount, 0),
                 ],
               ),
             ),
