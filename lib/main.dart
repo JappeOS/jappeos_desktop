@@ -1,5 +1,5 @@
 //  JappeOS-Desktop, The desktop environment for JappeOS.
-//  Copyright (C) 2022  Jappe02
+//  Copyright (C) 2026  The JappeOS team.
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU Affero General Public License as
@@ -16,7 +16,8 @@
 
 // ignore_for_file: library_private_types_in_public_api, constant_identifier_names
 
-import 'package:flutter/material.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
+
 import 'base/base.dart';
 
 // TODO: Multiple windows for multiple monitors

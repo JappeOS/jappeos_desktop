@@ -1,5 +1,5 @@
 //  JappeOS-Desktop, The desktop environment for JappeOS.
-//  Copyright (C) 2025  Jappe02
+//  Copyright (C) 2026  The JappeOS team.
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU Affero General Public License as
@@ -22,4 +22,4 @@ const DSKTP_UI_LAYER_TOPBAR_HEIGHT = 30.0;
 @Deprecated("The height of the dock is not constant anymore.")
 const DSKTP_UI_LAYER_DOCK_HEIGHT = 80.0;
 @Deprecated("This constant is temporary and will be removed later on. This is meant to be a modifiable OS setting that changes the wallpaper/desktop background image.")
-const DSKTP_UI_LAYER_BACKGROUND_WALLPAPER_DIR = "resources/images/desktop/backgrounds/wallpaper4.jpg";
+const DSKTP_UI_LAYER_BACKGROUND_WALLPAPER_DIR = "resources/images/desktop/backgrounds/wallpaper2.jpg";

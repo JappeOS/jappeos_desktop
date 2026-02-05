@@ -1,5 +1,5 @@
 //  JappeOS-Desktop, The desktop environment for JappeOS.
-//  Copyright (C) 2025  Jappe02
+//  Copyright (C) 2026  The JappeOS team.
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU Affero General Public License as
@@ -14,7 +14,7 @@
 //  You should have received a copy of the GNU Affero General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import 'package:flutter/material.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class AuthProvider extends ChangeNotifier {
   bool _isLoggedIn = true;
