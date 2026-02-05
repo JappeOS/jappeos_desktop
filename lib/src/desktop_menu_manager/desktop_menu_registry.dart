@@ -14,12 +14,18 @@
 //  You should have received a copy of the GNU Affero General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// ignore_for_file: library_private_types_in_public_api, constant_identifier_names
+import 'desktop_menu_entry.dart';
 
-import 'package:shadcn_flutter/shadcn_flutter.dart';
+class DesktopMenuRegistry {
+  final Map<String, DesktopMenuEntry> _entries = {};
+  final List<DesktopMenuEntry> _orderedEntries = [];
 
-import 'src/desktop.dart';
+  void register(DesktopMenuEntry entry) {
+    _entries[entry.id] = entry;
+    _orderedEntries.add(entry);
+  }
 
-Future<void> main(List<String> arguments) async {
-  runApp(const Desktop());
+  Iterable<DesktopMenuEntry> get entries => _orderedEntries;
+
+  DesktopMenuEntry? getById(String id) => _entries[id];
 }

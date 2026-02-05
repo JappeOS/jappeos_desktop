@@ -14,12 +14,8 @@
 //  You should have received a copy of the GNU Affero General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// ignore_for_file: library_private_types_in_public_api, constant_identifier_names
-
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'src/desktop.dart';
-
-Future<void> main(List<String> arguments) async {
-  runApp(const Desktop());
+class SwitchWindowIntent extends Intent {
+  const SwitchWindowIntent();
 }

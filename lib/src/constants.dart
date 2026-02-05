@@ -14,12 +14,10 @@
 //  You should have received a copy of the GNU Affero General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// ignore_for_file: library_private_types_in_public_api, constant_identifier_names
+// ignore_for_file: constant_identifier_names
 
-import 'package:shadcn_flutter/shadcn_flutter.dart';
-
-import 'src/desktop.dart';
-
-Future<void> main(List<String> arguments) async {
-  runApp(const Desktop());
-}
+const DSKTP_UI_LAYER_TOPBAR_HEIGHT = 30.0;
+@Deprecated("The height of the dock is not constant anymore.")
+const DSKTP_UI_LAYER_DOCK_HEIGHT = 80.0;
+@Deprecated("This constant is temporary and will be removed later on. This is meant to be a modifiable OS setting that changes the wallpaper/desktop background image.")
+const DSKTP_UI_LAYER_BACKGROUND_WALLPAPER_DIR = "resources/images/desktop/backgrounds/wallpaper2.jpg";

@@ -14,12 +14,20 @@
 //  You should have received a copy of the GNU Affero General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// ignore_for_file: library_private_types_in_public_api, constant_identifier_names
-
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'src/desktop.dart';
+class AuthProvider extends ChangeNotifier {
+  bool _isLoggedIn = true;
 
-Future<void> main(List<String> arguments) async {
-  runApp(const Desktop());
+  bool get isLoggedIn => _isLoggedIn;
+
+  void logIn() {
+    _isLoggedIn = true;
+    notifyListeners();
+  }
+
+  void logOut() {
+    _isLoggedIn = false;
+    notifyListeners();
+  }
 }

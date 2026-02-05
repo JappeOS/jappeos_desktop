@@ -14,12 +14,40 @@
 //  You should have received a copy of the GNU Affero General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// ignore_for_file: library_private_types_in_public_api, constant_identifier_names
-
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'src/desktop.dart';
+import '../quick_setting_item.dart';
+import '../quick_setting_tile.dart';
+import 'quick_setting_contributor.dart';
 
-Future<void> main(List<String> arguments) async {
-  runApp(const Desktop());
+class AudioQuickSetting extends StatelessWidget
+    implements QuickSettingContributor {
+  const AudioQuickSetting({super.key});
+
+  @override
+  String get id => 'audio';
+
+  @override
+  QuickSettingContributorType get type => QuickSettingContributorType.slider;
+
+  @override
+  IconData? createIcon(BuildContext context) => Icons.volume_up;
+
+  @override
+  bool canBuild(BuildContext context) => true;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = QuickSettingSliderItem(
+      id: id,
+      icon: Icons.volume_up,
+      value: 0.5,
+      hasDetails: true,
+    );
+
+    return QuickSettingSliderTile(item: item);
+  }
+
+  @override
+  Widget? buildDetails(BuildContext context) => null;
 }

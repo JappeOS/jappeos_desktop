@@ -14,12 +14,13 @@
 //  You should have received a copy of the GNU Affero General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// ignore_for_file: library_private_types_in_public_api, constant_identifier_names
-
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:widget_and_text_animator/widget_and_text_animator.dart';
 
-import 'src/desktop.dart';
-
-Future<void> main(List<String> arguments) async {
-  runApp(const Desktop());
+class IncomingScaleUpAnimation extends WidgetTransitionEffects {
+  IncomingScaleUpAnimation({Duration? delay}) : super(
+    curve: Curves.decelerate,
+    scale: 0.6, delay: delay,
+    duration: const Duration(milliseconds: 500),
+  );
 }
