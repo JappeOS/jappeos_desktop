@@ -1,5 +1,5 @@
 //  JappeOS-Desktop, The desktop environment for JappeOS.
-//  Copyright (C) 2025  Jappe02
+//  Copyright (C) 2026  The JappeOS team.
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU Affero General Public License as
@@ -17,6 +17,71 @@
 // ignore_for_file: library_private_types_in_public_api
 
 part of jappeos_desktop.base;
+
+class NotificationMenuEntry extends DesktopMenuEntry {
+  @override
+  String get id => 'notification';
+
+  @override
+  DesktopMenuEntryType get type => DesktopMenuEntryType.tray;
+
+  @override
+  String get label => 'Notifications';
+
+  @override
+  LogicalKeySet? get shortcut => LogicalKeySet(
+    LogicalKeyboardKey.superKey,
+    LogicalKeyboardKey.keyX,
+  );
+
+  @override
+  List<Widget> buildIcon(BuildContext context) {
+    return const [NotificationText(), Icon(Icons.notifications)];
+  }
+
+  @override
+  DesktopMenu createMenu() {
+    return NotificationMenu();
+  }
+}
+
+class NotificationText extends StatefulWidget {
+  const NotificationText({Key? key}) : super(key: key);
+
+  @override
+  _NotificationTextState createState() => _NotificationTextState();
+}
+
+class _NotificationTextState extends State<NotificationText> {
+  String _timeString = '';
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateTime();
+    _timer = Timer.periodic(const Duration(minutes: 1), (Timer t) => _updateTime());
+  }
+
+  void _updateTime() {
+    final now = DateTime.now();
+    final formattedTime = DateFormat('HH:mm').format(now);
+    setState(() {
+      _timeString = formattedTime;
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(_timeString).small();
+  }
+}
 
 class NotificationMenu extends DesktopMenu {
   NotificationMenu({Key? key}) : super(key: key);
