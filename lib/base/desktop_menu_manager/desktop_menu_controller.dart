@@ -1,5 +1,5 @@
 //  JappeOS-Desktop, The desktop environment for JappeOS.
-//  Copyright (C) 2025  Jappe02
+//  Copyright (C) 2026  The JappeOS team.
 //
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU Affero General Public License as
@@ -56,9 +56,16 @@ class DesktopMenuController {
 
   WidgetTransitionEffects _getAnimation() {
     if (_currentMenu is FullscreenDesktopMenu) {
-      return WidgetTransitionEffects(duration: kMenuAnimationDuration, opacity: 0);
+      return WidgetTransitionEffects(
+        duration: kMenuAnimationDuration,
+        opacity: 0,
+      );
     } else if (_currentMenu is CenteredDesktopMenu) {
-      return WidgetTransitionEffects.incomingScaleUp(duration: kMenuAnimationDuration * 3, curve: Curves.easeInOutBack);
+      return WidgetTransitionEffects.incomingScaleUp(
+        duration: kMenuAnimationDuration * 3,
+        curve: Curves.easeInOutBack,
+        opacity: 0.25,
+      );
     }
 
     return WidgetTransitionEffects(duration: kMenuAnimationDuration, offset: const Offset(0, -75));
@@ -73,7 +80,7 @@ class DesktopMenuController {
     return false;
   }
 
-  Widget? getWidget(BuildContext context) {
+  Widget? getWidget(BuildContext context, MonitorConfig monitor) {
     final double pad = _currentMenu is FullscreenDesktopMenu ? 0 : 4 * Theme.of(context).scaling;
 
     LayoutBuilder base() {
@@ -82,7 +89,10 @@ class DesktopMenuController {
           if (_currentMenuIsInitialBuild) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               //_focusNode!.requestFocus();
-              _currentStackWSize = MediaQuery.of(context).size;
+              _currentStackWSize = Size(
+                monitor.bounds.width.toDouble(),
+                monitor.bounds.height.toDouble(),
+              );
 
               final renderBox = context.findRenderObject() as RenderBox;
               _currentMenuChildSize = renderBox.size;
@@ -140,11 +150,9 @@ class DesktopMenuController {
                   child: RepaintBoundary(
                     child: () {
                       if (_currentMenu is FullscreenDesktopMenu) {
-                        return DualBorderOutlinedContainer(
+                        return SizedBox(
                           width: _currentStackWSize.width,
                           height: (_currentStackWSize.height - DSKTP_UI_LAYER_TOPBAR_HEIGHT).clamp(0, double.infinity),
-                          //backgroundBlur: true,
-                          padding: EdgeInsets.all(4 * Theme.of(context).scaling),
                           child: _currentMenu as Widget,
                         );
                       }
