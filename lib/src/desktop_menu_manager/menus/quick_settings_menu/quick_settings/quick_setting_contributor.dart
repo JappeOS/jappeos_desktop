@@ -16,38 +16,17 @@
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import '../quick_setting_item.dart';
-import '../quick_setting_tile.dart';
-import 'quick_setting_contributor.dart';
+enum QuickSettingContributorType {
+  chip,
+  slider,
+}
 
-class AudioQuickSetting extends StatelessWidget
-    implements QuickSettingContributor {
-  const AudioQuickSetting({super.key});
-
-  @override
-  String get id => 'audio';
-
-  @override
-  QuickSettingContributorType get type => QuickSettingContributorType.slider;
-
-  @override
-  IconData? createIcon(BuildContext context) => Icons.volume_up;
-
-  @override
+abstract class QuickSettingContributor {
+  String get id;
+  QuickSettingContributorType get type;
+  IconData? createIcon(BuildContext context) => null;
   bool canBuild(BuildContext context) => true;
-
-  @override
-  Widget build(BuildContext context) {
-    final item = QuickSettingSliderItem(
-      id: id,
-      icon: Icons.volume_up,
-      value: 0.5,
-      hasDetails: true,
-    );
-
-    return QuickSettingSliderTile(item: item);
-  }
-
-  @override
-  Widget? buildDetails(BuildContext context) => null;
+  Widget build(BuildContext context);
+  bool get hasDetails => false;
+  Widget buildDetails(BuildContext context) => throw UnimplementedError();
 }

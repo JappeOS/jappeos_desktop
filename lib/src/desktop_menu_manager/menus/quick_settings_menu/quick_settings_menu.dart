@@ -24,81 +24,52 @@ import '../../../components/desktop_widgets.dart';
 import '../../desktop_menu_controller.dart';
 import 'quick_setting_tile.dart';
 import 'quick_settings/quick_setting_contributor.dart';
+import 'quick_settings/quick_settings_details_controller.dart';
 import 'quick_settings_menu_entry.dart';
 
-class ControlCenterMenu extends DesktopMenu {
+class QuickSettingsMenu extends DesktopMenu {
   final QuickSettingsMenuEntry entry;
 
-  ControlCenterMenu({Key? key, required this.entry}) : super(key: key);
+  QuickSettingsMenu({Key? key, required this.entry}) : super(key: key);
 
   @override
-  _ControlCenterMenuState createState() => _ControlCenterMenuState();
+  _QuickSettingsMenuState createState() => _QuickSettingsMenuState();
 }
 
-class _ControlCenterMenuState extends State<ControlCenterMenu> {
+class _QuickSettingsMenuState extends State<QuickSettingsMenu> {
   final GlobalKey<NavigatorState> _containerNavigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
     return DOverlayContainer(
       width: 450,
-      child: Navigator(
-        key: _containerNavigatorKey,
-        onGenerateRoute: (RouteSettings settings) {
-          /*Widget w;
-          switch (settings.name) {
-            case "/":
+      child: ChangeNotifierProvider(
+        create: (_) => QuickSettingsDetailsController(),
+        builder: (context, _) {
+          final controller = context.watch<QuickSettingsDetailsController>();
 
-              break;
-            default:
-              w = _ControlCenterMainPage(entry: widget.entry);
-          }*/
+          if (controller.isOpen) {
+            final contributor = controller.active!;
+            return _QuickSettingsDetailsPage(contributor: contributor);
+          }
 
-          builder(BuildContext _) => _ControlCenterMainPage(entry: widget.entry);
-          return MaterialPageRoute(builder: builder, settings: settings);
+          return _QuickSettingsMainPage(entry: widget.entry);
         },
       ),
     );
   }
 }
 
-class ControlCenterPageBase extends StatelessWidget {
-  final String title;
-  final Widget body;
-
-  const ControlCenterPageBase({super.key, required this.title, required this.body});
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(/*backgroundColor: Theme.of(context).colorScheme.surface,*/
-      content: ConstrainedBox(constraints: const BoxConstraints(maxHeight: 400), child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(children: [
-            IconButton.secondary(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.arrow_back)),
-            const Spacer(flex: 4),
-            Text(title).large(),
-            const Spacer(flex: 5),
-          ]),
-          SizedBox(height: 4 * Theme.of(context).scaling),
-          //const Divider(),
-          Flexible(child: body),
-        ],
-      ),),
-    );
-  }
-}
-
-class _ControlCenterMainPage extends StatefulWidget {
+class _QuickSettingsMainPage extends StatefulWidget {
   final QuickSettingsMenuEntry entry;
 
-  const _ControlCenterMainPage({super.key, required this.entry});
+  const _QuickSettingsMainPage({super.key, required this.entry});
 
   @override
-  _ControlCenterMainPageState createState() => _ControlCenterMainPageState();
+  _QuickSettingsMainPageState createState() => _QuickSettingsMainPageState();
 }
 
-class _ControlCenterMainPageState extends State<_ControlCenterMainPage> {
+class _QuickSettingsMainPageState extends State<_QuickSettingsMainPage> {
   Widget _buildTopActions(ThemeData theme, PowerManagerService powerService)
       => Row(
     mainAxisSize: MainAxisSize.min,
@@ -118,7 +89,7 @@ class _ControlCenterMainPageState extends State<_ControlCenterMainPage> {
       const Spacer(),
       IconButton.secondary(icon: const Icon(Icons.settings), onPressed: () {}),
       SizedBox(width: 8 * theme.scaling),
-      _ControlCenterPowerButton(
+      _QuickSettingsPowerButton(
         onSuspend: () => powerService.suspend(),
         onRestart: () => powerService.reboot(),
         onPowerOff: () => powerService.shutdown(),
@@ -151,6 +122,17 @@ class _ControlCenterMainPageState extends State<_ControlCenterMainPage> {
         ),
       ),
     );
+  }
+}
+
+class _QuickSettingsDetailsPage extends StatelessWidget {
+  final QuickSettingContributor contributor;
+
+  const _QuickSettingsDetailsPage({super.key, required this.contributor});
+
+  @override
+  Widget build(BuildContext context) {
+    return contributor.buildDetails(context);
   }
 }
 
@@ -222,12 +204,12 @@ class _QuickSettingsSliderPanel extends StatelessWidget {
   }
 }
 
-class _ControlCenterPowerButton extends StatelessWidget {
+class _QuickSettingsPowerButton extends StatelessWidget {
   final void Function()? onSuspend;
   final void Function()? onRestart;
   final void Function()? onPowerOff;
 
-  const _ControlCenterPowerButton({
+  const _QuickSettingsPowerButton({
     super.key,
     this.onSuspend,
     this.onRestart,
@@ -262,16 +244,5 @@ class _ControlCenterPowerButton extends StatelessWidget {
         );
       },
     );
-  }
-}
-
-class _QuickSettingsSubPage extends StatelessWidget {
-  final List<QuickSettingContributor> contributors;
-
-  const _QuickSettingsSubPage({required this.contributors});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(height: 20);
   }
 }

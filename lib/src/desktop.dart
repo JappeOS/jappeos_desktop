@@ -30,7 +30,7 @@ import 'constants.dart';
 import 'desktop_actions.dart';
 import 'desktop_menu_manager/desktop_menu_controller.dart';
 import 'desktop_menu_manager/desktop_menu_registry.dart';
-import 'desktop_menu_manager/menus/control_center_menu/quick_settings_menu_entry.dart';
+import 'desktop_menu_manager/menus/quick_settings_menu/quick_settings_menu_entry.dart';
 import 'desktop_menu_manager/menus/launcher_menu.dart';
 import 'desktop_menu_manager/menus/notification_menu.dart';
 import 'desktop_menu_manager/menus/overview_menu.dart';

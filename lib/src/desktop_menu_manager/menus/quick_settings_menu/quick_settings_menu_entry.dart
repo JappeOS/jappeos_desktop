@@ -19,7 +19,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../../desktop_menu_controller.dart';
 import '../../desktop_menu_entry.dart';
-import 'control_center_menu.dart';
+import 'quick_settings_menu.dart';
 import 'quick_settings/audio_quick_setting.dart';
 import 'quick_settings/brightness_quick_setting.dart';
 import 'quick_settings/ethernet_quick_setting.dart';
@@ -74,6 +74,6 @@ class QuickSettingsMenuEntry extends DesktopMenuEntry {
 
   @override
   DesktopMenu createMenu() {
-    return ControlCenterMenu(entry: this);
+    return QuickSettingsMenu(entry: this);
   }
 }

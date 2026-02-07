@@ -14,46 +14,54 @@
 //  You should have received a copy of the GNU Affero General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import '../../../../provider/theme_provider.dart';
 import '../quick_setting_item.dart';
 import '../quick_setting_tile.dart';
 import 'quick_setting_contributor.dart';
 
-class ThemeQuickSetting extends StatelessWidget
+class AudioQuickSetting extends StatelessWidget
     implements QuickSettingContributor {
-  const ThemeQuickSetting({super.key});
+  const AudioQuickSetting({super.key});
 
   @override
-  String get id => 'theme';
+  String get id => 'audio';
 
   @override
-  QuickSettingContributorType get type => QuickSettingContributorType.chip;
+  QuickSettingContributorType get type => QuickSettingContributorType.slider;
 
   @override
-  IconData? createIcon(BuildContext context) => null;
+  IconData? createIcon(BuildContext context) => Icons.volume_up;
+
+  @override
+  bool get hasDetails => false;
+
+  @override
+  Widget buildDetails(BuildContext context) {
+    return const AudioDetailsPage();
+  }
 
   @override
   bool canBuild(BuildContext context) => true;
 
   @override
   Widget build(BuildContext context) {
-    final theme = context.watch<ThemeProvider>();
-    final item = QuickSettingChipItem(
+    final item = QuickSettingSliderItem(
       id: id,
-      title: 'Theme',
-      icon: Icons.brightness_6,
-      isEnabled: theme.isDark,
-      subtitle: theme.isDark ? 'Dark' : 'Light',
-      hasDetails: false,
-      onToggle: () => theme.toggleTheme(),
+      icon: Icons.volume_up,
+      value: 0.5,
+      hasDetails: true,
     );
 
-    return QuickSettingChipTile(item: item);
+    return QuickSettingSliderTile(item: item);
   }
+}
+
+class AudioDetailsPage extends StatelessWidget {
+  const AudioDetailsPage({super.key});
 
   @override
-  Widget? buildDetails(BuildContext context) => null;
+  Widget build(BuildContext context) {
+    return const Text("Not implemented yet");
+  }
 }

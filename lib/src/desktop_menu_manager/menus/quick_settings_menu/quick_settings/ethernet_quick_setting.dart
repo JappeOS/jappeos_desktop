@@ -21,6 +21,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../quick_setting_item.dart';
 import '../quick_setting_tile.dart';
 import 'quick_setting_contributor.dart';
+import 'quick_settings_details_controller.dart';
 
 class EthernetQuickSetting extends StatelessWidget
     implements QuickSettingContributor {
@@ -36,6 +37,14 @@ class EthernetQuickSetting extends StatelessWidget
   IconData? createIcon(BuildContext context) {
     final network = context.watch<NetworkManagerService>();
     return network.ethernetDevices.isNotEmpty ? Icons.cable : null;
+  }
+
+  @override
+  bool get hasDetails => true;
+
+  @override
+  Widget buildDetails(BuildContext context) {
+    return const EthernetDetailsPage();
   }
 
   @override
@@ -84,18 +93,24 @@ class EthernetQuickSetting extends StatelessWidget
       icon: Icons.cable,
       isEnabled: enabled,
       subtitle: subtitle,
-      hasDetails: enabled,
+      hasDetails: hasDetails,
       onToggle: () {
         // network.setWifiEnabled(...)
       },
       onOpenDetails: () {
-        // open Wi-Fi panel
+        QuickSettingsDetailsController.of(context).open(this);
       },
     );
 
     return QuickSettingChipTile(item: item);
   }
+}
+
+class EthernetDetailsPage extends StatelessWidget {
+  const EthernetDetailsPage({super.key});
 
   @override
-  Widget? buildDetails(BuildContext context) => null;
+  Widget build(BuildContext context) {
+    return const Text("Not implemented yet");
+  }
 }

@@ -41,6 +41,14 @@ class WifiQuickSetting extends StatelessWidget
   }
 
   @override
+  bool get hasDetails => true;
+
+  @override
+  Widget buildDetails(BuildContext context) {
+    return const WifiDetailsPage();
+  }
+
+  @override
   bool canBuild(BuildContext context) {
     final network = context.watch<NetworkManagerService>();
     return network.wifiDevices.isNotEmpty;
@@ -167,7 +175,13 @@ class WifiQuickSetting extends StatelessWidget
     // 4 All disconnected
     return (Icons.signal_wifi_off, false);
   }
+}
+
+class WifiDetailsPage extends StatelessWidget {
+  const WifiDetailsPage({super.key});
 
   @override
-  Widget? buildDetails(BuildContext context) => null;
+  Widget build(BuildContext context) {
+    return const Text("Not implemented yet");
+  }
 }

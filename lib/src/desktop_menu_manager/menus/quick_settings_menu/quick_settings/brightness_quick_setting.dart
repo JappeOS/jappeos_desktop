@@ -34,6 +34,12 @@ class BrightnessQuickSetting extends StatelessWidget
   IconData? createIcon(BuildContext context) => null;
 
   @override
+  bool get hasDetails => false;
+
+  @override
+  Widget buildDetails(BuildContext context) => throw UnimplementedError();
+
+  @override
   bool canBuild(BuildContext context) => true;
 
   @override
@@ -47,7 +53,4 @@ class BrightnessQuickSetting extends StatelessWidget
 
     return QuickSettingSliderTile(item: item);
   }
-
-  @override
-  Widget? buildDetails(BuildContext context) => null;
 }
