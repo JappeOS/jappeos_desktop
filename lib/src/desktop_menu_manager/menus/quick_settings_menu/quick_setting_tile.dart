@@ -91,3 +91,39 @@ class QuickSettingSliderTile extends StatelessWidget {
     );
   }
 }
+
+class QuickSettingPowerTile extends StatelessWidget {
+  final List<QuickSettingPowerItem> items;
+
+  const QuickSettingPowerTile({super.key, required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 8 * theme.scaling,
+      children: items.map((item) {
+        return Tooltip(
+          tooltip: (context) => item.tooltip != null
+              ? TooltipContainer(child: Text(item.tooltip!))
+              : const SizedBox.shrink(),
+          child: IconButton.secondary(
+          icon: Row(
+            children: [
+              SizedBox(width: 4 * theme.scaling),
+              item.icon,
+              if (item.label != null && item.label!.isNotEmpty) ...[
+                SizedBox(width: 4 * theme.scaling),
+                Text(item.label!),
+              ],
+              SizedBox(width: 4 * theme.scaling),
+            ],
+          ),
+          onPressed: item.onTap ?? () {},
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
