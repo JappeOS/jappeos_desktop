@@ -31,7 +31,7 @@ class AudioQuickSetting extends StatelessWidget
   QuickSettingContributorType get type => QuickSettingContributorType.slider;
 
   @override
-  IconData? createIcon(BuildContext context) => Icons.volume_up;
+  Icon? createIcon(BuildContext context) => const Icon(Icons.volume_up);
 
   @override
   bool get hasDetails => false;

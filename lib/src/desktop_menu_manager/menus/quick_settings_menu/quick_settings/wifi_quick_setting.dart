@@ -34,10 +34,10 @@ class WifiQuickSetting extends StatelessWidget
   QuickSettingContributorType get type => QuickSettingContributorType.chip;
 
   @override
-  IconData? createIcon(BuildContext context) {
+  Icon? createIcon(BuildContext context) {
     final network = context.watch<NetworkManagerService>();
     final ic = _getIcon(network.wifiDevices);
-    return ic.$2 ? ic.$1 : null;
+    return ic.$2 ? Icon(ic.$1) : null;
   }
 
   @override

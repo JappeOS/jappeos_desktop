@@ -34,9 +34,9 @@ class EthernetQuickSetting extends StatelessWidget
   QuickSettingContributorType get type => QuickSettingContributorType.chip;
 
   @override
-  IconData? createIcon(BuildContext context) {
+  Icon? createIcon(BuildContext context) {
     final network = context.watch<NetworkManagerService>();
-    return network.ethernetDevices.isNotEmpty ? Icons.cable : null;
+    return network.ethernetDevices.isNotEmpty ? const Icon(Icons.cable) : null;
   }
 
   @override

@@ -31,7 +31,7 @@ class BrightnessQuickSetting extends StatelessWidget
   QuickSettingContributorType get type => QuickSettingContributorType.slider;
 
   @override
-  IconData? createIcon(BuildContext context) => null;
+  Icon? createIcon(BuildContext context) => null;
 
   @override
   bool get hasDetails => false;
