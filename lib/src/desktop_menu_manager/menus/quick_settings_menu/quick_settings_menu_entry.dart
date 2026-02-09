@@ -15,6 +15,7 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:flutter/services.dart';
+import 'package:jappeos_desktop/src/desktop_menu_manager/menus/quick_settings_menu/quick_settings/battery_quick_setting.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../../desktop_menu_controller.dart';
@@ -29,12 +30,17 @@ import 'quick_settings/wifi_quick_setting.dart';
 
 class QuickSettingsMenuEntry extends DesktopMenuEntry {
   final List<QuickSettingContributor> qsContributors = [
+    const BatteryQuickSetting(),
     const WifiQuickSetting(),
     const EthernetQuickSetting(),
     const ThemeQuickSetting(),
     const AudioQuickSetting(),
     const BrightnessQuickSetting(),
   ];
+
+  late final List<QuickSettingContributor> qsPowerContributors
+      = qsContributors.where((c) => c.type == QuickSettingContributorType.power)
+        .toList();
 
   late final List<QuickSettingContributor> qsChipContributors
       = qsContributors.where((c) => c.type == QuickSettingContributorType.chip)
@@ -65,11 +71,10 @@ class QuickSettingsMenuEntry extends DesktopMenuEntry {
     for (final contributor in qsContributors) {
       final iconData = contributor.createIcon(context);
       if (iconData != null) {
-        icons.add(Icon(iconData));
+        icons.add(iconData);
       }
     }
-    icons.add(const Icon(Icons.power_settings_new));
-    return icons;
+    return icons.reversed.toList();
   }
 
   @override
