@@ -19,12 +19,13 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 enum QuickSettingContributorType {
   chip,
   slider,
+  power,
 }
 
 abstract class QuickSettingContributor {
   String get id;
   QuickSettingContributorType get type;
-  IconData? createIcon(BuildContext context) => null;
+  Icon? createIcon(BuildContext context) => null;
   bool canBuild(BuildContext context) => true;
   Widget build(BuildContext context);
   bool get hasDetails => false;
