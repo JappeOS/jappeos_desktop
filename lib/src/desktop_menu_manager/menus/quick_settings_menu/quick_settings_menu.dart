@@ -70,38 +70,9 @@ class _QuickSettingsMainPage extends StatefulWidget {
 }
 
 class _QuickSettingsMainPageState extends State<_QuickSettingsMainPage> {
-  Widget _buildTopActions(ThemeData theme, PowerManagerService powerService)
-      => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      IconButton.secondary(
-        icon: Row(
-          children: [
-            SizedBox(width: 4 * theme.scaling),
-            const Icon(Icons.battery_full),
-            SizedBox(width: 4 * theme.scaling),
-            const Text("100%"),
-            SizedBox(width: 4 * theme.scaling),
-          ],
-        ),
-        onPressed: () {},
-      ),
-      const Spacer(),
-      IconButton.secondary(icon: const Icon(Icons.settings), onPressed: () {}),
-      SizedBox(width: 8 * theme.scaling),
-      _QuickSettingsPowerButton(
-        onSuspend: () => powerService.suspend(),
-        onRestart: () => powerService.reboot(),
-        onPowerOff: () => powerService.shutdown(),
-      ),
-    ],
-  );
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final powerService = context.read<PowerManagerService>();
-
     return Padding(
       padding: EdgeInsets.all(16 * theme.scaling),
       child: IntrinsicWidth(
@@ -114,7 +85,7 @@ class _QuickSettingsMainPageState extends State<_QuickSettingsMainPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 8 * theme.scaling,
             children: [
-              _buildTopActions(theme, powerService),
+              _QuickSettingsPowerPanel(contributors: widget.entry.qsPowerContributors),
               _QuickSettingsChipPanel(contributors: widget.entry.qsChipContributors),
               _QuickSettingsSliderPanel(contributors: widget.entry.qsSliderContributors),
             ],
@@ -133,6 +104,48 @@ class _QuickSettingsDetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return contributor.buildDetails(context);
+  }
+}
+
+class _QuickSettingsPowerPanel extends StatelessWidget {
+  final List<QuickSettingContributor> contributors;
+
+  const _QuickSettingsPowerPanel({required this.contributors});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final powerService = context.read<PowerManagerService>();
+    final items = contributors
+        .where((c) => c.canBuild(context))
+        .map((c) => c.build(context))
+        .toList();
+    final hasNoItems = items.isEmpty;
+
+    assert(
+      !items.any((e) => e is! QuickSettingPowerTile),
+      'All items must be QuickSettingPowerTile',
+    );
+
+    items.addAll([
+      if (!hasNoItems)
+        const Spacer(),
+      IconButton.secondary(icon: const Icon(Icons.lock), onPressed: () {}),
+      IconButton.secondary(icon: const Icon(Icons.settings), onPressed: () {}),
+      if (hasNoItems)
+        const Spacer(),
+      _QuickSettingsPowerButton(
+        onSuspend: () => powerService.suspend(),
+        onRestart: () => powerService.reboot(),
+        onPowerOff: () => powerService.shutdown(),
+      ),
+    ]);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 8 * theme.scaling,
+      children: items,
+    );
   }
 }
 
