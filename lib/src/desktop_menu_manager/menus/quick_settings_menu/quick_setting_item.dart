@@ -54,8 +54,6 @@ class QuickSettingSliderItem {
   final Function(double)? onChanged;
   final VoidCallback? onOpenDetails;
 
-  final Widget Function(BuildContext)? detailsBuilder;
-
   QuickSettingSliderItem({
     required this.id,
     required this.icon,
@@ -64,6 +62,23 @@ class QuickSettingSliderItem {
     this.onIconTap,
     this.onChanged,
     this.onOpenDetails,
-    this.detailsBuilder,
+  });
+}
+
+class QuickSettingPowerItem {
+  final String id;
+
+  final Icon icon;
+  final String? label;
+  final String? tooltip;
+
+  final VoidCallback? onTap;
+
+  QuickSettingPowerItem({
+    required this.id,
+    required this.icon,
+    this.label,
+    this.tooltip,
+    this.onTap,
   });
 }
