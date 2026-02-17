@@ -14,12 +14,9 @@
 //  You should have received a copy of the GNU Affero General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// ignore_for_file: constant_identifier_names, non_constant_identifier_names
-
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:jappeos_desktop_base/jappeos_desktop_base.dart';
-import 'package:jappeos_services/jappeos_services.dart';
 import 'package:jdwm_flutter/jdwm_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -30,14 +27,11 @@ import 'constants.dart';
 import 'desktop_actions.dart';
 import 'desktop_menu_manager/desktop_menu_controller.dart';
 import 'desktop_menu_manager/desktop_menu_registry.dart';
-import 'desktop_menu_manager/menus/quick_settings_menu/quick_settings_menu_entry.dart';
 import 'desktop_menu_manager/menus/launcher_menu.dart';
 import 'desktop_menu_manager/menus/notification_menu.dart';
 import 'desktop_menu_manager/menus/overview_menu.dart';
-import 'keybinds/global_keybind_scope.dart';
-import 'keybinds/global_keybind_service.dart';
+import 'desktop_menu_manager/menus/quick_settings_menu/quick_settings_menu_entry.dart';
 import 'provider/auth_provider.dart';
-import 'provider/theme_provider.dart';
 
 /// The stateful widget for the base desktop UI.
 class Desktop extends StatefulWidget {
@@ -47,7 +41,8 @@ class Desktop extends StatefulWidget {
   DesktopState createState() => DesktopState();
 }
 
-/// This is the public class for the JappeOS Desktop, the `wmController` object can be accessed for using the windowing system.
+/// This is the public class for the JappeOS Desktop,
+/// the `wmController` object can be accessed for using the windowing system.
 ///
 /// See [WmController] for more information on the windowing system.
 class DesktopState extends State<Desktop> {
@@ -55,9 +50,6 @@ class DesktopState extends State<Desktop> {
       = GlobalKey<WindowManagerState>();
   static WindowManagerState? getWmController()
       => _wmControllerKey.currentState;
-
-  /// Whether to render GUI on the desktop or not, if false, only the WM windows will be rendered.
-  static bool renderGUI = true;
 
   late final DesktopMenuController _menuController;
   final DesktopMenuRegistry _menuRegistry = DesktopMenuRegistry();
@@ -69,6 +61,12 @@ class DesktopState extends State<Desktop> {
   };
 
   final _actions = const <Type, Action<Intent>>{};
+
+  final List<MonitorConfig> _monitors = [
+    //const MonitorConfig(id: "a", bounds: Rect.fromLTWH(0,    0, 1920, 1080), margin: EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT)),
+    //const MonitorConfig(id: "b", bounds: Rect.fromLTWH(1920, 0, 1920, 1080)),
+    //const MonitorConfig(id: "c", bounds: Rect.fromLTWH(0,   540, 960, 540)),
+  ];
 
   @override
   void initState() {
@@ -89,126 +87,59 @@ class DesktopState extends State<Desktop> {
 
   @override
   Widget build(BuildContext context) {
-    // TODO
-    //if (!renderGUI) {
-    //  return _DesktopWindowLayer(onWmController: (p) => _wmController = p);
-    //}
-
-    return _buildFullDesktop(context);
-  }
-
-  Widget _buildFullDesktop(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-
-    return JappeosServiceProvider(
-      child: MultiProvider(
-        providers: [
-          ListenableProvider<AuthProvider>(create: (_) => AuthProvider()),
-          ListenableProvider<ThemeProvider>(create: (_) => ThemeProvider()),
-        ],
-        builder: (context, _) {
-          final themeProvider = context.watch<ThemeProvider>();
-          return MediaQuery(
-            // TODO: Correctly integrate system text scaling by changing scales of icons and other UI elements with text.
-            data: mediaQuery.copyWith(textScaler: const TextScaler.linear(1.0)),
-            child: ShadcnApp(
-              title: 'jappeos_desktop',
-              debugShowCheckedModeBanner: false,
-              theme: ThemeData(
-                colorScheme: themeProvider.isDark
-                    ? ColorSchemes.darkDefaultColor
-                    : ColorSchemes.lightDefaultColor,
-                radius: 0.9,
-                surfaceOpacity: 0.85,
-                surfaceBlur: 9,
-              ),
-              home: GlobalKeybindScope(
-                keybinds: _keybinds,
-                child: _DesktopScaffold(
-                  wmKey: _wmControllerKey,
-                  menuRegistry: _menuRegistry,
-                  menuController: _menuController,
-                  shortcuts: _shortcuts,
-                  actions: _actions,
+    return ShellApp(
+      title: 'jappeos_desktop',
+      debugShowCheckedModeBanner: false,
+      wmKey: _wmControllerKey,
+      providers: [
+        ListenableProvider<AuthProvider>(create: (_) => AuthProvider()),
+        ListenableProvider<ThemeProvider>(create: (_) => ThemeProvider()),
+      ],
+      theme: _getTheme(false),
+      darkTheme: _getTheme(true),
+      shortcuts: _shortcuts,
+      actions: _actions,
+      keybinds: _keybinds,
+      dynamicMonitorInsets: const EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT),
+      monitors: _monitors,
+      monitorBuilder: (context, monitor) => Consumer<AuthProvider>(
+        builder: (context, auth, _) {
+          if (!auth.isLoggedIn) {
+            return _buildLoginScreen(auth); // TODO: Handle multiple monitors
+          }
+          return ContextMenu(
+            items: _buildContextMenuItems(),
+            child: Container(
+              width: monitor.bounds.width.toDouble(),
+              height: monitor.bounds.height.toDouble(),
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(DSKTP_UI_LAYER_BACKGROUND_WALLPAPER_DIR),
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
           );
         },
       ),
-    );
-  }
-}
-
-class _DesktopScaffold extends StatefulWidget {
-  final GlobalKey<WindowManagerState> wmKey;
-  final DesktopMenuRegistry menuRegistry;
-  final DesktopMenuController menuController;
-  final Map<LogicalKeySet, Intent> shortcuts;
-  final Map<Type, Action<Intent>> actions;
-
-  const _DesktopScaffold({
-    required this.wmKey,
-    required this.menuRegistry,
-    required this.menuController,
-    required this.shortcuts,
-    required this.actions,
-  });
-
-  @override
-  _DesktopScaffoldState createState() => _DesktopScaffoldState();
-}
-
-/// Internal scaffold widget for the desktop UI
-class _DesktopScaffoldState extends State<_DesktopScaffold> {
-  @override
-  Widget build(BuildContext context) {
-    final List<MonitorConfig> monitors = [
-      //const MonitorConfig(id: "a", bounds: Rect.fromLTWH(0,    0, 1920, 1080), margin: EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT)),
-      //const MonitorConfig(id: "b", bounds: Rect.fromLTWH(1920, 0, 1920, 1080)),
-      //const MonitorConfig(id: "c", bounds: Rect.fromLTWH(0,   540, 960, 540)),
-    ];
-
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      child: Shortcuts(
-        shortcuts: widget.shortcuts,
-        child: Actions(
-          actions: widget.actions,
-          child: DesktopBase(
-            wmKey: widget.wmKey,
-            dynamicMonitorInsets: const EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT),
-            monitorConfig: monitors,
-            monitorBuilder: (context, monitor) => Consumer<AuthProvider>(
-              builder: (context, auth, _) {
-                if (!auth.isLoggedIn) {
-                  return _buildLoginScreen(auth); // TODO: Handle multiple monitors
-                }
-                return ContextMenu(
-                  items: _buildContextMenuItems(),
-                  child: Container(
-                    width: monitor.bounds.width.toDouble(),
-                    height: monitor.bounds.height.toDouble(),
-                    decoration: const BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage(DSKTP_UI_LAYER_BACKGROUND_WALLPAPER_DIR),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            monitorOverlayBuilder: (context, monitor) => monitors.isEmpty || monitors.first == monitor ? Consumer<AuthProvider>(
-              builder: (context, auth, _) => Stack(
-                children: _buildDesktopOverlayLayers(context, auth, monitor),
-              ),
-            ) : const SizedBox.shrink(),
-          ),
+      monitorOverlayBuilder: (context, monitor) =>
+        _monitors.isEmpty || _monitors.first == monitor
+            ? Consumer<AuthProvider>(
+        builder: (context, auth, _) => Stack(
+          children: _buildDesktopOverlayLayers(context, auth, monitor),
         ),
-      ),
+      ) : const SizedBox.shrink(),
     );
   }
+
+  ThemeData _getTheme(bool dark) => ThemeData(
+    colorScheme: dark
+        ? ColorSchemes.darkDefaultColor
+        : ColorSchemes.lightDefaultColor,
+    radius: 0.9,
+    surfaceOpacity: 0.85,
+    surfaceBlur: 9,
+  );
 
   List<MenuItem> _buildContextMenuItems() {
     return [
@@ -223,8 +154,12 @@ class _DesktopScaffoldState extends State<_DesktopScaffold> {
     ];
   }
 
-  List<Widget> _buildDesktopOverlayLayers(BuildContext context, AuthProvider auth, MonitorConfig monitor) {
-    final dmenuWidget = widget.menuController.getWidget(context, monitor);
+  List<Widget> _buildDesktopOverlayLayers(
+    BuildContext context,
+    AuthProvider auth,
+    MonitorConfig monitor,
+  ) {
+    final dmenuWidget = _menuController.getWidget(context, monitor);
     return [
       if (auth.isLoggedIn) ...[
         _buildDock(),
@@ -271,8 +206,8 @@ class _DesktopScaffoldState extends State<_DesktopScaffold> {
 
   Widget _buildTopBar() {
     return DesktopTopBarNew(
-      registry: widget.menuRegistry,
-      menuController: widget.menuController,
+      registry: _menuRegistry,
+      menuController: _menuController,
     );
   }
 }
