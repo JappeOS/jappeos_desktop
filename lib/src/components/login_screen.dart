@@ -22,7 +22,7 @@ import 'package:intl/intl.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:widget_and_text_animator/widget_and_text_animator.dart';
 
-import 'desktop_widgets.dart';
+import 'desktop_container.dart';
 
 typedef LoginError = String;
 typedef UserList = List<String>;
@@ -178,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
           });
         }
       },
-      child: DBlurContainer(
+      child: DesktopBlurContainer(
         child: _buildBase(switch (_currentPage) {
           _Page.main => _buildMainPage(),
           _Page.list => _buildUsersList(),
