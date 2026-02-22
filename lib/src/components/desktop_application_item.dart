@@ -16,6 +16,8 @@
 
 // ignore_for_file: library_private_types_in_public_api
 
+import 'dart:io';
+
 import 'package:freedesktop_desktop_entry/freedesktop_desktop_entry.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -31,13 +33,13 @@ class DesktopApplicationItem extends StatefulWidget {
   final void Function()? onPress;
 
   const DesktopApplicationItem._({
-    Key? key,
+    super.key,
     required this.entry,
     this.showTitle = true,
     this.sizeFactor = 1.0,
     this.borderRadius,
     this.onPress,
-  }) : super(key: key);
+  });
 
   factory DesktopApplicationItem.icon({
     required String entry,
@@ -72,14 +74,20 @@ class DesktopApplicationItem extends StatefulWidget {
 }
 
 class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
+  late Future<Map<String, DesktopEntry>> _entriesFuture;
+  Future<File?>? _iconFuture;
   bool _isHovered = false, _isPressed = false;
-  double? _width, _height;
+
+  double get _width =>
+      widget.showTitle ? 100 * widget.sizeFactor : 80 * widget.sizeFactor;
+
+  double? get _height =>
+      widget.showTitle ? null : 80 * widget.sizeFactor;
 
   @override
   void initState() {
     super.initState();
-    _width = widget.showTitle ? 100 * widget.sizeFactor : 80 * widget.sizeFactor;
-    _height = widget.showTitle ? null : 80 * widget.sizeFactor;
+    _entriesFuture = context.read<DesktopEntryProvider>().getEntries();
   }
 
   @override
@@ -87,39 +95,42 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final hoveredColor = colorScheme.primary.withValues(alpha: 0.08);
-    final pressedColor = colorScheme.primary.withValues(alpha: 0.08);
+    final pressedColor = colorScheme.primary.withValues(alpha: 0.12);
 
-    var iconSize = _width! - (4 * theme.scaling) * 1.25;
+    var iconSize = _width - (4 * theme.scaling) * 1.25;
 
     if (iconSize > 60) iconSize = 60;
 
-    final entryProvider = context.watch<DesktopEntryProvider>();
-
     return FutureBuilder(
-      future: entryProvider.getEntries(),
+      future: _entriesFuture,
       builder: (context, snapshot) {
         DesktopEntry? entry;
-        String title = "null";
+        String? title;
         if (snapshot.connectionState == ConnectionState.done
             && snapshot.hasData
             && snapshot.data != null) {
           final data = snapshot.data!;
           entry = data[widget.entry];
-          title = entry?.entries[DesktopEntryKey.name.string]?.value ?? "null";
+          title = entry?.entries[DesktopEntryKey.name.string]?.value;
+          _iconFuture = context.read<DesktopEntryProvider>().getIcon(entry!);
         }
+
+        title ??= "Unknown";
 
         return SizedBox(
           width: _width,
           height: _height,
           child: RepaintBoundary(
             child: Tooltip(
-              tooltip: (_) => TooltipContainer(child: Text(title)),
+              tooltip: (_) => TooltipContainer(child: Text(title!)),
               child: MouseRegion(
                 onEnter: (p0) => setState(() => _isHovered = true),
                 onExit: (p0) => setState(() => _isHovered = false),
                 child: GestureDetector(
                   onTap: widget.onPress,
                   onTapDown: (p0) => setState(() => _isPressed = true),
+                  onTapUp: (_) => setState(() => _isPressed = false),
+                  onTapCancel: () => setState(() => _isPressed = false),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: _isPressed
@@ -141,12 +152,10 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
                             scale: _isPressed ? 0.7 : 1,
                             curve: Curves.easeOut,
                             duration: const Duration(milliseconds: 75),
-                            onEnd: () {
+                            /*onEnd: () {
                               if (_isPressed) setState(() => _isPressed = false);
-                            },
+                            },*/
                             child: _buildIcon(
-                              entryProvider: entryProvider,
-                              entry: entry,
                               width: iconSize,
                               height: iconSize,
                             ),
@@ -171,16 +180,12 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
   }
 
   Widget _buildIcon({
-    required DesktopEntryProvider entryProvider,
-    DesktopEntry? entry,
     double? width,
     double? height,
   }) {
     Widget fallbackIcon = const FlutterLogo();
-    if (entry == null) return fallbackIcon;
-
     return FutureBuilder(
-      future: entryProvider.getIcon(entry),
+      future: _iconFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) return fallbackIcon;
         if (!snapshot.hasData || snapshot.data == null) return fallbackIcon;
