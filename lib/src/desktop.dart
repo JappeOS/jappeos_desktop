@@ -15,13 +15,13 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:jappeos_desktop_base/jappeos_desktop_base.dart';
 import 'package:jdwm_flutter/jdwm_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'components/desktop_widgets.dart';
+import 'components/desktop_dock.dart';
+import 'components/desktop_top_bar.dart';
 import 'components/login_screen.dart';
 import 'constants.dart';
 import 'desktop_actions.dart';
@@ -32,6 +32,7 @@ import 'desktop_menu_manager/menus/notification_menu.dart';
 import 'desktop_menu_manager/menus/overview_menu.dart';
 import 'desktop_menu_manager/menus/quick_settings_menu/quick_settings_menu_entry.dart';
 import 'provider/auth_provider.dart';
+import 'provider/desktop_entry_provider.dart';
 
 /// The stateful widget for the base desktop UI.
 class Desktop extends StatefulWidget {
@@ -71,7 +72,7 @@ class DesktopState extends State<Desktop> {
   @override
   void initState() {
     super.initState();
-    _menuController = DesktopMenuController((x) => setState(x ?? () {}));
+    _menuController = DesktopMenuController();
     _menuRegistry.register(LauncherMenuEntry());
     _menuRegistry.register(OverviewMenuEntry());
     _menuRegistry.register(QuickSettingsMenuEntry());
@@ -93,7 +94,7 @@ class DesktopState extends State<Desktop> {
       wmKey: _wmControllerKey,
       providers: [
         ListenableProvider<AuthProvider>(create: (_) => AuthProvider()),
-        ListenableProvider<ThemeProvider>(create: (_) => ThemeProvider()),
+        ListenableProvider<DesktopEntryProvider>(create: (_) => DesktopEntryProvider()),
       ],
       theme: _getTheme(false),
       darkTheme: _getTheme(true),
@@ -159,14 +160,18 @@ class DesktopState extends State<Desktop> {
     AuthProvider auth,
     MonitorConfig monitor,
   ) {
-    final dmenuWidget = _menuController.getWidget(context, monitor);
     return [
       if (auth.isLoggedIn) ...[
         _buildDock(),
         _buildTopBar(),
       ],
-      if (dmenuWidget != null)
-        dmenuWidget,
+      Positioned.fill(
+        top: DSKTP_UI_LAYER_TOPBAR_HEIGHT,
+        child: DesktopMenuWidget(
+          controller: _menuController,
+          monitor: monitor,
+        ),
+      ),
     ];
   }
 
@@ -186,7 +191,7 @@ class DesktopState extends State<Desktop> {
     return DesktopDock(
       hasWindowIntersection: false,
       items: [
-        (
+        /*(
           SvgPicture.asset(
             "resources/images/_icontheme/Default/apps/development-appmaker.svg"
           ),
@@ -199,7 +204,7 @@ class DesktopState extends State<Desktop> {
           ),
           "Calculator",
           () {}
-        ),
+        ),*/
       ],
     );
   }
