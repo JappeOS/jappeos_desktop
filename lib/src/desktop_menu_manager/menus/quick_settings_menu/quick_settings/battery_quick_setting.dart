@@ -53,13 +53,15 @@ class BatteryQuickSetting extends StatelessWidget
 
     List<QuickSettingPowerItem> items = [];
     for (final d in powerDevices) {
-      if (d.type == BatteryDeviceType.battery && d.isPowerSupply) {
+      if (d.type == BatteryDeviceType.battery && d.isPowerSupply && d.isPresent) {
         bool isCharging = d.state == BatteryDeviceState.charging;
+        bool isDischarging = d.state == BatteryDeviceState.discharging;
+
         final item = QuickSettingPowerItem(
           id: d.id,
           icon: _getIcon(d),
           label: "${d.chargePercentage.round()}%",
-          tooltip: "${d.chargePercentage.round()}% • ${d.state.name} • ${!isCharging ? "${d.timeToEmpty.inMinutes} min to empty" : "${d.timeToFull.inMinutes} min to full"}",
+          tooltip: "${d.chargePercentage.round()}% • ${d.state.name} ${isCharging || isDischarging ? "•" : ""}${isCharging ? " ${d.timeToFull.inMinutes} min to full" : (isDischarging ? " ${d.timeToEmpty.inMinutes} min to empty" : "")}",
         );
         items.add(item);
       }
