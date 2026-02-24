@@ -18,169 +18,58 @@ import 'package:event/event.dart';
 import 'package:flutter/services.dart';
 import 'package:jdwm_flutter/jdwm_flutter.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import 'package:widget_and_text_animator/widget_and_text_animator.dart';
-
-import '../constants.dart';
 
 // TODO: Outgoing animation
-class DesktopMenuController {
+class DesktopMenuController extends ChangeNotifier {
   static const kMenuAnimationDuration = Duration(milliseconds: 100);
 
-  DesktopMenuController(this.rebuildCallback);
-
-  final Function(void Function()?) rebuildCallback;
   DesktopMenu? _currentMenu;
-  Offset? _currentMenuPosition;
-  Size _currentMenuChildSize = Size.zero;
-  Size _currentStackWSize = Size.zero;
-  bool _currentMenuIsInitialBuild = true;
+  Offset? _anchorPosition;
 
-  void openMenu(DesktopMenu menu, {Offset? position, void Function()? closeCallback}) {
+  DesktopMenu? get currentMenu => _currentMenu;
+  Offset? get anchorPosition => _anchorPosition;
+
+  void openMenu(
+    DesktopMenu menu, {
+    Offset? position,
+    void Function()? closeCallback,
+  }) {
     _currentMenu = menu;
-    _currentMenuPosition = position;
-    _currentMenuIsInitialBuild = true;
-    rebuildCallback(null);
+    _anchorPosition = position;
+
     ServicesBinding.instance.keyboard.addHandler(_onKey);
+
     menu.onOpen.broadcast();
 
     if (closeCallback != null) {
       menu.onClose.subscribe((_) => closeCallback());
     }
+
+    notifyListeners();
   }
 
   void closeMenu() {
-    if (_currentMenu == null) return; // <-- no menu open, so return
+    if (_currentMenu == null) return;
 
     ServicesBinding.instance.keyboard.removeHandler(_onKey);
+
     _currentMenu?.onClose.broadcast();
     _currentMenu?.onOpen.unsubscribeAll();
     _currentMenu?.onClose.unsubscribeAll();
+
     _currentMenu = null;
-    _currentMenuPosition = null;
-    rebuildCallback(null);
-  }
+    _anchorPosition = null;
 
-  WidgetTransitionEffects _getAnimation() {
-    if (_currentMenu is FullscreenDesktopMenu) {
-      return WidgetTransitionEffects(
-        duration: kMenuAnimationDuration,
-        opacity: 0,
-      );
-    } else if (_currentMenu is CenteredDesktopMenu) {
-      return WidgetTransitionEffects.incomingScaleUp(
-        duration: kMenuAnimationDuration * 3,
-        curve: Curves.easeInOutBack,
-        opacity: 0.25,
-      );
-    }
-
-    return WidgetTransitionEffects(duration: kMenuAnimationDuration, offset: const Offset(0, -75));
+    notifyListeners();
   }
 
   bool _onKey(KeyEvent event) {
-    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape) {
       closeMenu();
       return true;
     }
-
     return false;
-  }
-
-  Widget? getWidget(BuildContext context, MonitorConfig monitor) {
-    final double pad = _currentMenu is FullscreenDesktopMenu ? 0 : 4 * Theme.of(context).scaling;
-
-    LayoutBuilder base() {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          if (_currentMenuIsInitialBuild) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              //_focusNode!.requestFocus();
-              _currentStackWSize = Size(
-                monitor.bounds.width.toDouble(),
-                monitor.bounds.height.toDouble(),
-              );
-
-              final renderBox = context.findRenderObject() as RenderBox;
-              _currentMenuChildSize = renderBox.size;
-
-              final oldMenuPos = _currentMenuPosition;
-
-              _currentMenuPosition = Offset(
-                _currentMenuPosition!.dx - _currentMenuChildSize.width / 2,
-                _currentMenuPosition!.dy - _currentMenuChildSize.height / 2,
-              );
-
-              // Ensure the menu is correctly positioned within the stack
-              rebuildCallback(() {
-                if (_currentMenu is CenteredDesktopMenu) {
-                  _currentMenuPosition = Offset(
-                    (_currentStackWSize.width / 2) - (_currentMenuChildSize.width / 2),
-                    (_currentStackWSize.height / 2) - (_currentMenuChildSize.height / 2),
-                  );
-                  return;
-                }
-
-                var minX = pad;
-                var maxX = _currentStackWSize.width - _currentMenuChildSize.width - pad;
-
-                if (maxX < minX) {
-                  maxX = minX;
-                }
-
-                var minY = DSKTP_UI_LAYER_TOPBAR_HEIGHT + pad;
-                var maxY = _currentStackWSize.height - _currentMenuChildSize.height - pad;
-
-                if (maxY < minY) {
-                  maxY = minY;
-                }
-
-                _currentMenuPosition = Offset(
-                  oldMenuPos!.dx - _currentMenuChildSize.width / 2,
-                  oldMenuPos.dy - _currentMenuChildSize.height / 2,
-                );
-
-                _currentMenuPosition = Offset(
-                  _currentMenuPosition!.dx.clamp(minX, maxX),
-                  _currentMenuPosition!.dy.clamp(minY, maxY),
-                );
-              });
-            });
-          }
-
-          _currentMenuIsInitialBuild = false;
-
-          return TapRegion(
-            onTapOutside: (_) => closeMenu(),
-            child: WidgetAnimator(
-                  incomingEffect: _getAnimation(),
-                  child: RepaintBoundary(
-                    child: () {
-                      if (_currentMenu is FullscreenDesktopMenu) {
-                        return SizedBox(
-                          width: _currentStackWSize.width,
-                          height: (_currentStackWSize.height - DSKTP_UI_LAYER_TOPBAR_HEIGHT).clamp(0, double.infinity),
-                          child: _currentMenu as Widget,
-                        );
-                      }
-
-                      return _currentMenu as Widget;
-                    }(),
-                  ),
-                ),
-
-
-          );
-        },
-      );
-    }
-
-    return _currentMenu != null
-        ? Positioned(
-            left: _currentMenuPosition!.dx,
-            top: _currentMenuPosition!.dy,
-            child: base(),
-          )
-        : null;
   }
 }
 
@@ -197,4 +86,178 @@ abstract class FullscreenDesktopMenu extends DesktopMenu {
 
 abstract class CenteredDesktopMenu extends DesktopMenu {
   CenteredDesktopMenu({super.key});
+}
+
+class DesktopMenuWidget extends StatefulWidget {
+  final DesktopMenuController controller;
+  final MonitorConfig monitor;
+
+  const DesktopMenuWidget({
+    super.key,
+    required this.controller,
+    required this.monitor,
+  });
+
+  @override
+  State<DesktopMenuWidget> createState() => _DesktopMenuWidgetState();
+}
+
+class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animationController;
+  late final Animation<double> _fade;
+  late final Animation<double> _scale;
+  late final Animation<Offset> _slide;
+
+  Offset? _position;
+  Size _menuSize = Size.zero;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: DesktopMenuController.kMenuAnimationDuration,
+    );
+
+    _fade = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    );
+
+    _scale = Tween(begin: 0.9, end: 1.0).animate(_fade);
+
+    _slide = Tween(
+      begin: const Offset(0, -0.05),
+      end: Offset.zero,
+    ).animate(_fade);
+
+    widget.controller.addListener(_onControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (widget.controller.currentMenu != null) {
+      _animationController.forward(from: 0);
+    } else {
+      _animationController.reverse();
+    }
+    setState(() {
+      _position = null;
+      _menuSize = Size.zero;
+    });
+  }
+
+  void _computePosition(DesktopMenu menu) {
+    final bounds = widget.monitor.bounds;
+    final anchor = widget.controller.anchorPosition;
+
+    const double pad = 8;
+
+    if (menu is FullscreenDesktopMenu) {
+      _position = Offset.zero;
+      return;
+    }
+
+    if (menu is CenteredDesktopMenu) {
+      _position = Offset(
+        (bounds.width - _menuSize.width) / 2,
+        (bounds.height - _menuSize.height) / 2,
+      );
+      return;
+    }
+
+    // Regular anchored menu
+    if (anchor == null) return;
+
+    double left = anchor.dx - _menuSize.width / 2;
+    double top = anchor.dy - _menuSize.height / 2;
+
+    final minX = pad;
+    final maxX = bounds.width - _menuSize.width - pad;
+
+    final minY = pad;
+    final maxY = bounds.height - _menuSize.height - pad;
+
+    left = left.clamp(minX, maxX);
+    top = top.clamp(minY, maxY);
+
+    _position = Offset(left, top);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final menu = widget.controller.currentMenu;
+    if (menu == null) return const SizedBox.shrink();
+
+    return AnimatedBuilder(
+      animation: _animationController,
+      child: KeyedSubtree(
+        key: ValueKey(menu), // preserves state
+        child: RepaintBoundary(child: menu),
+      ),
+      builder: (context, child) {
+        return Stack(
+          children: [
+            /// Positioned menu
+            Builder(
+              builder: (context) {
+                return Positioned(
+                  left: _position?.dx ?? 0,
+                  top: _position?.dy ?? 0,
+                  child: TapRegion(
+                    onTapOutside: (_) => widget.controller.closeMenu(),
+                    behavior: HitTestBehavior.translucent,
+                    child: SlideTransition(
+                      position: _slide,
+                      child: ScaleTransition(
+                        scale: _scale,
+                        child: FadeTransition(
+                          opacity: _fade,
+                          child: Builder(
+                            builder: (context) {
+                              final capturedMenu = menu;
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (!mounted) return;
+                                final box = context.findRenderObject() as RenderBox?;
+                                if (box == null) return;
+                                final newSize = box.size;
+                                if (newSize != _menuSize) {
+                                  _menuSize = newSize;
+                                  _computePosition(capturedMenu);
+                                  setState(() {});
+                                }
+                              });
+
+                              if (menu is FullscreenDesktopMenu) {
+                                final bounds = widget.monitor.bounds;
+                                return SizedBox(
+                                  width: bounds.width,
+                                  height: bounds.height,
+                                  child: child!,
+                                );
+                              }
+
+                              return child!;
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
