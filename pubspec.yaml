@@ -11,26 +11,21 @@ dependencies:
   flutter:
     sdk: flutter
 
-  #shadcn_flutter:
-  #  git:
-  #    url: https://github.com/JappeOS/shadcn_flutter.git
-  #    ref: master
+  shadcn_flutter:
+    git:
+      url: https://github.com/JappeOS/shadcn_flutter.git
+      ref: master
+
+  jdwm_flutter:
+    git:
+      url: https://github.com/JappeOS/JDWM.git
+      ref: main
+      path: jdwm_flutter
 
   shadcn_flutter:
-    path: ../shadcn_flutter
-
-  # TODO
-  #jdwm_flutter:
-  #  git:
-  #    url: https://github.com/JappeOS/JDWM.git
-  #    ref: main
-  #    path: jdwm_flutter
-  ### TODO
-  jdwm_flutter:
-    path: ../JDWM/jdwm_flutter
-
-  jappeos_desktop_base:
-    path: ../jappeos_desktop_base
+    git:
+      url: https://github.com/JappeOS/jappeos_desktop_base.git
+      ref: master
 
   jappeos_services:
     git:
@@ -49,12 +44,13 @@ dependencies:
   widget_and_text_animator: ^1.1.5
   freedesktop_desktop_entry: ^0.6.1
   collection: ^1.19.1
+  material_symbols_icons: ^4.2906.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^2.0.0
+  flutter_lints: ^5.0.0
 
 flutter:
 
