@@ -19,7 +19,7 @@
 import 'package:flutter/services.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import '../../components/desktop_widgets.dart';
+import '../../components/desktop_window_view.dart';
 import '../desktop_menu_controller.dart';
 import '../desktop_menu_entry.dart';
 
@@ -59,7 +59,7 @@ class OverviewMenu extends FullscreenDesktopMenu {
 
 class _OpenWindowsMenuState extends State<OverviewMenu> {
   Widget _buildDesktopItem(String title, bool isCurrent, void Function() onPress, void Function() onDelete) {
-    return DWindowView(
+    return DesktopWindowView(
       title: title,
       isTitleEditable: true,
       isHighlighted: isCurrent,
@@ -87,7 +87,7 @@ class _OpenWindowsMenuState extends State<OverviewMenu> {
       );
     }
 
-    return DWindowView(
+    return DesktopWindowView(
       title: title,
       height: 300,
       isTitleEditable: false,
@@ -123,7 +123,7 @@ class _OpenWindowsMenuState extends State<OverviewMenu> {
                 const Spacer(),
                 _buildDesktopItem("Desktop 1", true, () {}, () {}),
                 _buildDesktopItem("Desktop 2", false, () {}, () {}),
-                DWindowView(
+                DesktopWindowView(
                   title: "Add Desktop",
                   isTitleEditable: false,
                   onPress: () {},

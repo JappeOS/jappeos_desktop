@@ -22,7 +22,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import '../../components/desktop_widgets.dart';
+import '../../components/desktop_container.dart';
 import '../desktop_menu_controller.dart';
 import '../desktop_menu_entry.dart';
 
@@ -154,13 +154,13 @@ class _NotificationMenuState extends State<NotificationMenu> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        DOverlayContainer(
+        DesktopOverlayContainer(
           width: 400,
           padding: EdgeInsets.all(defaultPadding),
           child: buildCalendar(),
         ),
         SizedBox(height: defaultPadding),
-        DOverlayContainer(
+        DesktopOverlayContainer(
           width: 400,
           padding: EdgeInsets.all(defaultPadding),
           child: Column(

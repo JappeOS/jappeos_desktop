@@ -18,11 +18,11 @@
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import '../../components/desktop_widgets.dart';
+import '../../components/desktop_container.dart';
 import '../desktop_menu_controller.dart';
 
 class PermissionsMenu extends DesktopMenu {
-  PermissionsMenu({Key? key}) : super(key: key);
+  PermissionsMenu({super.key});
 
   @override
   _PermissionsMenuState createState() => _PermissionsMenuState();
@@ -38,7 +38,7 @@ class _PermissionsMenuState extends State<PermissionsMenu> {
   Widget build(BuildContext context) {
     final defaultPadding = 4 * Theme.of(context).scaling;
 
-    return DOverlayContainer(
+    return DesktopOverlayContainer(
       width: 300,
       height: 300,
       child: Padding(
