@@ -304,23 +304,29 @@ packages:
   jappeos_desktop_base:
     dependency: "direct main"
     description:
-      path: "../jappeos_desktop_base"
-      relative: true
-    source: path
+      path: "."
+      ref: main
+      resolved-ref: beb13d8abca8acd4066d73277e791c1ac2b0c50f
+      url: "https://github.com/JappeOS/jappeos_desktop_base.git"
+    source: git
     version: "1.0.0+1"
   jappeos_services:
     dependency: "direct main"
     description:
-      path: "../jappeos_services"
-      relative: true
-    source: path
+      path: "."
+      ref: dev
+      resolved-ref: "32c255211c70b2ca3167e470c80b85bab27c13a9"
+      url: "https://github.com/JappeOS/jappeos_services.git"
+    source: git
     version: "1.0.0+1"
   jdwm_flutter:
     dependency: "direct main"
     description:
-      path: "../JDWM/jdwm_flutter"
-      relative: true
-    source: path
+      path: jdwm_flutter
+      ref: main
+      resolved-ref: "2a6280bf0c65a3a42a2a00a3e70e7dbd0f1aaaf2"
+      url: "https://github.com/JappeOS/JDWM.git"
+    source: git
     version: "1.0.0+1"
   jovial_misc:
     dependency: transitive
@@ -630,9 +636,11 @@ packages:
   shadcn_flutter:
     dependency: "direct main"
     description:
-      path: "../shadcn_flutter"
-      relative: true
-    source: path
+      path: "."
+      ref: master
+      resolved-ref: "84176b9bf20ccf24f46e8bbc13ad0a6c101f9ee0"
+      url: "https://github.com/JappeOS/shadcn_flutter.git"
+    source: git
     version: "0.0.48"
   skeletonizer:
     dependency: transitive

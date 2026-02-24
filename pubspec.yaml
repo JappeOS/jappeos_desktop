@@ -22,10 +22,10 @@ dependencies:
       ref: main
       path: jdwm_flutter
 
-  shadcn_flutter:
+  jappeos_desktop_base:
     git:
       url: https://github.com/JappeOS/jappeos_desktop_base.git
-      ref: master
+      ref: main
 
   jappeos_services:
     git:
