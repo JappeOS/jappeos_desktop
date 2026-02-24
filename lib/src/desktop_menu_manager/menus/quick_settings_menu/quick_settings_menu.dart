@@ -20,7 +20,7 @@ import 'package:jappeos_services/jappeos_services.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import '../../../components/desktop_widgets.dart';
+import '../../../components/desktop_container.dart';
 import '../../desktop_menu_controller.dart';
 import 'quick_setting_tile.dart';
 import 'quick_settings/quick_setting_contributor.dart';
@@ -30,32 +30,107 @@ import 'quick_settings_menu_entry.dart';
 class QuickSettingsMenu extends DesktopMenu {
   final QuickSettingsMenuEntry entry;
 
-  QuickSettingsMenu({Key? key, required this.entry}) : super(key: key);
+  QuickSettingsMenu({super.key, required this.entry});
 
   @override
   _QuickSettingsMenuState createState() => _QuickSettingsMenuState();
 }
 
 class _QuickSettingsMenuState extends State<QuickSettingsMenu> {
-  final GlobalKey<NavigatorState> _containerNavigatorKey = GlobalKey<NavigatorState>();
-
   @override
   Widget build(BuildContext context) {
-    return DOverlayContainer(
+    return DesktopOverlayContainer(
       width: 450,
       child: ChangeNotifierProvider(
         create: (_) => QuickSettingsDetailsController(),
         builder: (context, _) {
           final controller = context.watch<QuickSettingsDetailsController>();
 
-          if (controller.isOpen) {
-            final contributor = controller.active!;
-            return _QuickSettingsDetailsPage(contributor: contributor);
-          }
+          final child = controller.isOpen
+              ? KeyedSubtree(
+                  key: const ValueKey('details'),
+                  child: controller.active!.buildDetails(context),
+                )
+              : KeyedSubtree(
+                  key: const ValueKey('main'),
+                  child: _QuickSettingsMainPage(entry: widget.entry),
+                );
 
-          return _QuickSettingsMainPage(entry: widget.entry);
+          return _QuickSettingsPageSwitcher(
+            direction: controller.direction,
+            child: child,
+          );
         },
       ),
+    );
+  }
+}
+
+class _QuickSettingsPageSwitcher extends StatelessWidget {
+  final Widget child;
+  final QuickSettingsPageDirection direction;
+
+  const _QuickSettingsPageSwitcher({
+    super.key,
+    required this.child,
+    required this.direction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: kDefaultDuration,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          children: [
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        );
+      },
+      transitionBuilder: (child, animation) {
+        final isDetails =
+            (child.key as ValueKey).value == 'details';
+
+        if (direction == QuickSettingsPageDirection.forward) {
+          if (isDetails) {
+            // Details entering -> slide from right
+            return SlideTransition(
+              position: Tween(
+                begin: const Offset(1, 0),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            );
+          } else {
+            // Main leaving -> fade out
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          }
+        } else {
+          if (isDetails) {
+            // Details leaving -> slide to right
+            return SlideTransition(
+              position: Tween(
+                begin: const Offset(1, 0),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            );
+          } else {
+            // Main entering -> fade in
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          }
+        }
+      },
+      child: child,
     );
   }
 }
@@ -75,35 +150,22 @@ class _QuickSettingsMainPageState extends State<_QuickSettingsMainPage> {
     final theme = Theme.of(context);
     return Padding(
       padding: EdgeInsets.all(16 * theme.scaling),
-      child: IntrinsicWidth(
-        child: ButtonStyleOverride.inherit(
-          decoration: (context, states, value) => (value as BoxDecoration).copyWith(
-            borderRadius: BorderRadius.circular(theme.radiusXl),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: 8 * theme.scaling,
-            children: [
-              _QuickSettingsPowerPanel(contributors: widget.entry.qsPowerContributors),
-              _QuickSettingsChipPanel(contributors: widget.entry.qsChipContributors),
-              _QuickSettingsSliderPanel(contributors: widget.entry.qsSliderContributors),
-            ],
-          ),
+      child: ButtonStyleOverride.inherit(
+        decoration: (context, states, value) => (value as BoxDecoration).copyWith(
+          borderRadius: BorderRadius.circular(theme.radiusXl),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 8 * theme.scaling,
+          children: [
+            _QuickSettingsPowerPanel(contributors: widget.entry.qsPowerContributors),
+            _QuickSettingsChipPanel(contributors: widget.entry.qsChipContributors),
+            _QuickSettingsSliderPanel(contributors: widget.entry.qsSliderContributors),
+          ],
         ),
       ),
     );
-  }
-}
-
-class _QuickSettingsDetailsPage extends StatelessWidget {
-  final QuickSettingContributor contributor;
-
-  const _QuickSettingsDetailsPage({super.key, required this.contributor});
-
-  @override
-  Widget build(BuildContext context) {
-    return contributor.buildDetails(context);
   }
 }
 
