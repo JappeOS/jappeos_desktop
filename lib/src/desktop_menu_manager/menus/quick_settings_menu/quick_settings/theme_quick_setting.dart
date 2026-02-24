@@ -16,11 +16,13 @@
 
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:jappeos_desktop_base/jappeos_desktop_base.dart';
 
-import '../../../../provider/theme_provider.dart';
+import '../quick_setting_details_page.dart';
 import '../quick_setting_item.dart';
 import '../quick_setting_tile.dart';
 import 'quick_setting_contributor.dart';
+import 'quick_settings_details_controller.dart';
 
 class ThemeQuickSetting extends StatelessWidget
     implements QuickSettingContributor {
@@ -36,10 +38,19 @@ class ThemeQuickSetting extends StatelessWidget
   Icon? createIcon(BuildContext context) => null;
 
   @override
-  bool get hasDetails => false;
+  bool get hasDetails => true;
 
   @override
-  Widget buildDetails(BuildContext context) => throw UnimplementedError();
+  Widget buildDetails(BuildContext context) {
+    final theme = context.watch<ThemeProvider>();
+    return QuickSettingDetailsPage(
+      icon: _icon,
+      title: _title,
+      value: _isEnabled(theme),
+      onToggle: (_) => theme.toggleTheme(),
+      child: const Text("Not implemented yet"),
+    );
+  }
 
   @override
   bool canBuild(BuildContext context) => true;
@@ -49,14 +60,20 @@ class ThemeQuickSetting extends StatelessWidget
     final theme = context.watch<ThemeProvider>();
     final item = QuickSettingChipItem(
       id: id,
-      title: 'Theme',
-      icon: Icons.brightness_6,
-      isEnabled: theme.isDark,
-      subtitle: theme.isDark ? 'Dark' : 'Light',
-      hasDetails: false,
+      title: _title,
+      icon: _icon,
+      isEnabled: _isEnabled(theme),
+      subtitle: _isEnabled(theme) ? 'Dark' : 'Light',
+      hasDetails: hasDetails,
       onToggle: () => theme.toggleTheme(),
+      onOpenDetails: () => QuickSettingsDetailsController.of(context).open(this),
     );
 
     return QuickSettingChipTile(item: item);
   }
+
+  String get _title => "Theme";
+  IconData get _icon => Icons.brightness_6;
+
+  bool _isEnabled(ThemeProvider p) => p.isDark;
 }
