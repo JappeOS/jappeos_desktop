@@ -29,8 +29,8 @@ class DesktopApplicationItem extends StatefulWidget {
   final String entry;
   final bool showTitle;
   final double sizeFactor;
-  final double? borderRadius;
-  final void Function()? onPress;
+  final BorderRadiusGeometry? borderRadius;
+  final void Function()? onPressed;
 
   const DesktopApplicationItem._({
     super.key,
@@ -38,13 +38,13 @@ class DesktopApplicationItem extends StatefulWidget {
     this.showTitle = true,
     this.sizeFactor = 1.0,
     this.borderRadius,
-    this.onPress,
+    this.onPressed,
   });
 
   factory DesktopApplicationItem.icon({
     required String entry,
     double sizeFactor = 1,
-    double? borderRadius,
+    BorderRadiusGeometry? borderRadius,
     void Function()? onPress,
   }) {
     return DesktopApplicationItem._(
@@ -52,20 +52,20 @@ class DesktopApplicationItem extends StatefulWidget {
       showTitle: false,
       sizeFactor: sizeFactor,
       borderRadius: borderRadius,
-      onPress: onPress,
+      onPressed: onPress,
     );
   }
 
   factory DesktopApplicationItem.iconWithTitle({
     required String entry,
-    double? borderRadius,
+    BorderRadiusGeometry? borderRadius,
     void Function()? onPress,
   }) {
     return DesktopApplicationItem._(
       entry: entry,
       showTitle: true,
       borderRadius: borderRadius,
-      onPress: onPress,
+      onPressed: onPress,
     );
   }
 
@@ -76,6 +76,7 @@ class DesktopApplicationItem extends StatefulWidget {
 class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
   late Future<Map<String, DesktopEntry>> _entriesFuture;
   Future<File?>? _iconFuture;
+  String? _title;
   bool _isHovered = false, _isPressed = false;
 
   double get _width =>
@@ -104,30 +105,31 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
     return FutureBuilder(
       future: _entriesFuture,
       builder: (context, snapshot) {
+        final desktopEntryProvider = context.read<DesktopEntryProvider>();
         DesktopEntry? entry;
-        String? title;
         if (snapshot.connectionState == ConnectionState.done
             && snapshot.hasData
             && snapshot.data != null) {
           final data = snapshot.data!;
           entry = data[widget.entry];
-          title = entry?.entries[DesktopEntryKey.name.string]?.value;
-          _iconFuture = context.read<DesktopEntryProvider>().getIcon(entry!);
+          _title ??= entry?.entries[DesktopEntryKey.name.string]?.value ?? "Unknown";
+          _iconFuture ??= desktopEntryProvider.getIcon(entry!);
         }
 
-        title ??= "Unknown";
+        final title = _title ?? "Unknown";
 
         return SizedBox(
           width: _width,
           height: _height,
           child: RepaintBoundary(
             child: Tooltip(
-              tooltip: (_) => TooltipContainer(child: Text(title!)),
+              tooltip: (_) => TooltipContainer(child: Text(title)),
               child: MouseRegion(
                 onEnter: (p0) => setState(() => _isHovered = true),
                 onExit: (p0) => setState(() => _isHovered = false),
                 child: GestureDetector(
-                  onTap: widget.onPress,
+                  onTap: widget.onPressed
+                      ?? (entry != null ? () => desktopEntryProvider.launchDesktopEntry(entry!) : null),
                   onTapDown: (p0) => setState(() => _isPressed = true),
                   onTapUp: (_) => setState(() => _isPressed = false),
                   onTapCancel: () => setState(() => _isPressed = false),
@@ -136,7 +138,7 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
                       color: _isPressed
                           ? pressedColor
                           : (_isHovered ? hoveredColor : null),
-                      borderRadius: BorderRadius.circular(8 * theme.scaling),
+                      borderRadius: widget.borderRadius ?? BorderRadius.circular(8 * theme.scaling),
                     ),
                     child: Padding(
                       padding: widget.showTitle
@@ -165,7 +167,7 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.center,
                             maxLines: 1,
-                          ).medium(),
+                          ).small(),
                         ],
                       ),
                     ),
@@ -183,14 +185,27 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
     double? width,
     double? height,
   }) {
-    Widget fallbackIcon = const FlutterLogo();
+    Widget fallbackIcon = SizedBox(
+      width: width,
+      height: height,
+      child: Icon(Icons.settings_applications, size: width),
+    );
+
     return FutureBuilder(
       future: _iconFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) return fallbackIcon;
         if (!snapshot.hasData || snapshot.data == null) return fallbackIcon;
 
-        return Image.file(snapshot.data!, width: width, height: height);
+        return Image.file(
+          snapshot.data!,
+          width: width,
+          height: height,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return fallbackIcon;
+          },
+        );
       },
     );
   }
