@@ -31,10 +31,10 @@ import 'quick_settings/wifi_quick_setting.dart';
 class QuickSettingsMenuEntry extends DesktopMenuEntry {
   final List<QuickSettingContributor> qsContributors = [
     const BatteryQuickSetting(),
+    const AudioQuickSetting(),
     const WifiQuickSetting(),
     const EthernetQuickSetting(),
     const ThemeQuickSetting(),
-    const AudioQuickSetting(),
     const BrightnessQuickSetting(),
   ];
 
