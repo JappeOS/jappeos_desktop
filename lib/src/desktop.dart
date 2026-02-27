@@ -16,7 +16,7 @@
 
 import 'package:flutter/services.dart';
 import 'package:jappeos_desktop_base/jappeos_desktop_base.dart';
-import 'package:jdwm_flutter/jdwm_flutter.dart';
+import 'package:jdwm/jdwm.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -102,7 +102,7 @@ class DesktopState extends State<Desktop> {
       actions: _actions,
       keybinds: _keybinds,
       dynamicMonitorInsets: const EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT),
-      monitors: _monitors,
+      //monitors: _monitors,
       monitorBuilder: (context, monitor) => Consumer<AuthProvider>(
         builder: (context, auth, _) {
           if (!auth.isLoggedIn) {
@@ -124,7 +124,7 @@ class DesktopState extends State<Desktop> {
         },
       ),
       monitorOverlayBuilder: (context, monitor) =>
-        _monitors.isEmpty || _monitors.first == monitor
+        monitor.isPrimary
             ? Consumer<AuthProvider>(
         builder: (context, auth, _) => Stack(
           children: _buildDesktopOverlayLayers(context, auth, monitor),

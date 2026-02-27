@@ -13,6 +13,8 @@
 migrate_working_dir/
 .private/
 /JappeOS/tempRemoved/
+/vendor/
+/deps/
 
 # IntelliJ related
 *.iml

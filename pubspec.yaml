@@ -11,16 +11,20 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # TODO
   shadcn_flutter:
     git:
       url: https://github.com/JappeOS/shadcn_flutter.git
       ref: master
 
-  jdwm_flutter:
-    git:
-      url: https://github.com/JappeOS/JDWM.git
-      ref: main
-      path: jdwm_flutter
+  #jdwm_flutter:
+  #  git:
+  #    url: https://github.com/JappeOS/JDWM.git
+  #    ref: main
+  #    path: jdwm_flutter
+
+  jdwm:
+    path: vendor/jdwm
 
   jappeos_desktop_base:
     git:
@@ -31,6 +35,8 @@ dependencies:
     git:
       url: https://github.com/JappeOS/jappeos_services.git
       ref: dev
+  #jappeos_services:
+  #  path: ../jappeos_services
 
   provider: ^6.0.3
   event: ^3.1.0
@@ -51,6 +57,14 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^5.0.0
+
+dependency_overrides:
+  jdwm:
+    path: vendor/jdwm
+
+analyzer:
+  exclude:
+    - vendor/**
 
 flutter:
 

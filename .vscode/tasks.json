@@ -1,0 +1,90 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "jdwm:detect-arch",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -euo pipefail; mkdir -p .vscode; APP_NAME=''; if [ -f build_config.env ]; then source build_config.env; fi; APP_NAME=${APP_NAME:-$(basename \"$PWD\")}; { echo JDWM_ARCH=$(uname -m); echo JDWM_APP_NAME=${APP_NAME}; } > .vscode/arch.env"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "jdwm:build-debug",
+      "type": "shell",
+      "command": "./run_build.sh",
+      "args": [
+        "debug"
+      ],
+      "dependsOn": [
+        "jdwm:detect-arch"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "jdwm:build-profile",
+      "type": "shell",
+      "command": "./run_build.sh",
+      "args": [
+        "profile"
+      ],
+      "dependsOn": [
+        "jdwm:detect-arch"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "jdwm:build-release",
+      "type": "shell",
+      "command": "./run_build.sh",
+      "args": [
+        "release"
+      ],
+      "dependsOn": [
+        "jdwm:detect-arch"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "jdwm:run-debug",
+      "type": "shell",
+      "command": "./run_build.sh",
+      "args": [
+        "debug",
+        "--run"
+      ],
+      "dependsOn": [
+        "jdwm:detect-arch"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "jdwm:run-profile",
+      "type": "shell",
+      "command": "./run_build.sh",
+      "args": [
+        "profile",
+        "--run"
+      ],
+      "dependsOn": [
+        "jdwm:detect-arch"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "jdwm:run-release",
+      "type": "shell",
+      "command": "./run_build.sh",
+      "args": [
+        "release",
+        "--run"
+      ],
+      "dependsOn": [
+        "jdwm:detect-arch"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

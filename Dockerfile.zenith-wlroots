@@ -1,0 +1,253 @@
+# Multi-stage Dockerfile for building Flutter desktop app with local wlroots
+# Based on Ubuntu 22.04 for host glibc compatibility
+#
+# Build Requirements:
+#   - Local Flutter SDK (ensure via ./ensure_flutter_clone.sh)
+#   - wlroots source code (included in repo)
+#   - Project source code (included in repo)
+#
+# Usage:
+#   ./ensure_flutter_clone.sh                          # Clone <project_dir>/vendor/flutter_clone/ if missing
+#   docker build -f <project_dir>/Dockerfile.zenith-wlroots -t zenith-wlroots .
+#   docker run --rm -v "$(pwd):/work" zenith-wlroots
+#
+# Output: /work/<project_dir>/build/<app_name>/release/bundle/<app_name> (runtime executable)
+
+FROM ubuntu:22.04 AS builder
+ARG APP_NAME
+ARG PROJECT_DIR
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+RUN apt-get update -y && apt-get install -y --no-install-recommends \
+    # Core build tools
+    build-essential \
+    gcc \
+    g++ \
+    clang \
+    cmake \
+    meson \
+    ninja-build \
+    pkg-config \
+    ca-certificates \
+    git \
+    curl \
+    unzip \
+    xz-utils \
+    zip \
+    python3-pip \
+    \
+    # Wayland/DRM graphics stack
+    libwayland-dev \
+    libwayland-egl-backend-dev \
+    libxkbcommon-dev \
+    libxkbcommon-x11-dev \
+    libdrm-dev \
+    libgbm-dev \
+    libinput-dev \
+    libudev-dev \
+    libpixman-1-dev \
+    \
+    # OpenGL/EGL/GLES2 rendering
+    libegl-dev \
+    libegl1-mesa-dev \
+    libepoxy-dev \
+    libgles2-mesa-dev \
+    libgl1-mesa-dev \
+    \
+    # GUI/X11 (Flutter Linux support)
+    libgtk-3-dev \
+    libx11-dev \
+    libxext-dev \
+    libxrender-dev \
+    \
+    # Other dependencies
+    libpam0g-dev \
+    libstdc++-11-dev \
+    libc++-dev \
+    libc++abi-dev \
+    libxml2-dev \
+    liblcms2-dev \
+    hwdata \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set compiler to use gcc/g++
+ENV CC=gcc CXX=g++ CXXFLAGS="-std=c++17"
+
+# Copy and setup Flutter SDK from local <project_dir>/vendor/flutter_clone/
+COPY ${PROJECT_DIR}/vendor/flutter_clone /opt/flutter
+RUN /opt/flutter/bin/flutter config --enable-linux-desktop && \
+    /opt/flutter/bin/flutter precache
+ENV PATH="/opt/flutter/bin:${PATH}"
+
+# Copy source repositories
+COPY ${PROJECT_DIR}/vendor/wlroots /src/wlroots
+COPY ${PROJECT_DIR} /src/${PROJECT_DIR}
+
+WORKDIR /src
+
+# Upgrade meson to version >=1.3 (required by wlroots 0.19.0)
+RUN pip3 install --upgrade meson
+
+# Build libdrm 2.4.122+ from source (required by wlroots 0.19.0)
+RUN echo "=== Building libdrm 2.4.122 ===" && \
+    git clone --depth 1 --branch libdrm-2.4.122 https://gitlab.freedesktop.org/mesa/drm.git /src/libdrm && \
+    cd /src/libdrm && \
+    meson setup build --prefix=/usr/local --buildtype=release && \
+    ninja -C build && \
+    ninja -C build install && \
+    ldconfig && \
+    echo "libdrm 2.4.122 build complete"
+
+# Build pixman 0.43.0+ from source (required by wlroots 0.19.0)
+RUN echo "=== Building pixman 0.43.0 ===" && \
+    curl -L https://gitlab.freedesktop.org/pixman/pixman/-/archive/pixman-0.43.0/pixman-pixman-0.43.0.tar.gz | tar xz && \
+    cd pixman-pixman-0.43.0 && \
+    meson setup build --prefix=/usr/local --buildtype=release && \
+    ninja -C build && \
+    ninja -C build install && \
+    ldconfig && \
+    echo "pixman 0.43.0 build complete"
+
+# Build wayland 1.23.1+ from source (required by wlroots 0.19.0)
+RUN echo "=== Building wayland 1.23.1 ===" && \
+    curl -L https://gitlab.freedesktop.org/wayland/wayland/-/archive/1.23.1/wayland-1.23.1.tar.gz | tar xz && \
+    cd wayland-1.23.1 && \
+    meson setup build --prefix=/usr/local --buildtype=release -Ddocumentation=false && \
+    ninja -C build && \
+    ninja -C build install && \
+    ldconfig && \
+    echo "wayland 1.23.1 build complete"
+
+# Build wayland-protocols 1.41+ from source (required by wlroots 0.19.0)
+RUN echo "=== Building wayland-protocols 1.41 ===" && \
+    git clone --depth 1 --branch 1.41 https://gitlab.freedesktop.org/wayland/wayland-protocols.git /src/wayland-protocols && \
+    cd /src/wayland-protocols && \
+    meson setup build --prefix=/usr/local --buildtype=release && \
+    ninja -C build && \
+    ninja -C build install && \
+    echo "wayland-protocols 1.41 build complete"
+
+# Build libseat from source (Ubuntu 22.04 version too old/missing pkg-config)
+RUN echo "=== Building libseat ===" && \
+    git clone --depth 1 --branch 0.8.0 https://git.sr.ht/~kennylevinsen/seatd /src/seatd && \
+    cd /src/seatd && \
+    meson setup build --prefix=/usr/local --buildtype=release \
+      -Dserver=disabled -Dman-pages=disabled -Dexamples=disabled && \
+    ninja -C build && \
+    ninja -C build install && \
+    ldconfig && \
+    echo "libseat build complete"
+
+# Build libdisplay-info from source (not available in Ubuntu 22.04)
+RUN echo "=== Building libdisplay-info ===" && \
+    git clone --depth 1 --branch 0.2.0 https://gitlab.freedesktop.org/emersion/libdisplay-info.git /src/libdisplay-info && \
+    cd /src/libdisplay-info && \
+    meson setup build --prefix=/usr/local --buildtype=release && \
+    ninja -C build && \
+    ninja -C build install && \
+    ldconfig && \
+    echo "libdisplay-info build complete"
+
+# Build libliftoff from source (not available in Ubuntu 22.04)
+RUN echo "=== Building libliftoff ===" && \
+    git clone --depth 1 --branch v0.5.0 https://gitlab.freedesktop.org/emersion/libliftoff.git /src/libliftoff && \
+    cd /src/libliftoff && \
+    export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH && \
+    meson setup build --prefix=/usr/local --buildtype=release && \
+    ninja -C build && \
+    ninja -C build install && \
+    ldconfig && \
+    echo "libliftoff build complete"
+
+# Create hwdata pkg-config file (Ubuntu 22.04 hwdata package lacks it)
+RUN echo 'pkgdatadir=/usr/share/hwdata' > /usr/local/share/pkgconfig/hwdata.pc && \
+    echo 'Name: hwdata' >> /usr/local/share/pkgconfig/hwdata.pc && \
+    echo 'Description: Hardware identification databases' >> /usr/local/share/pkgconfig/hwdata.pc && \
+    echo 'Version: 0.360' >> /usr/local/share/pkgconfig/hwdata.pc
+
+# Build wlroots 0.19.0
+RUN echo "=== Building wlroots 0.19.0 ===" && \
+    export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:$PKG_CONFIG_PATH && \
+    cd /src/wlroots && \
+    rm -rf build && \
+    meson setup build/ \
+      --prefix=/usr/local \
+      --buildtype=release \
+      -Dwerror=false \
+      -Dbackends=drm,libinput \
+      -Drenderers=gles2 \
+      -Dallocators=gbm \
+      -Dsession=enabled \
+      -Dxwayland=disabled \
+      -Dexamples=false \
+      -Dwrap_mode=nofallback && \
+    ninja -C build/ && \
+    ninja -C build/ install && \
+    ldconfig && \
+    echo "wlroots 0.19.0 build complete"
+
+# Verify wlroots installation
+RUN test -f /usr/local/lib/x86_64-linux-gnu/libwlroots-0.19.so && \
+    ls -lh /usr/local/lib/x86_64-linux-gnu/libwlroots* && \
+    echo "wlroots 0.19.0 verified"
+
+# Build application
+RUN echo "=== Building ${APP_NAME} ===" && \
+    bash -lc '\
+      set -euo pipefail; \
+      cd /src/${PROJECT_DIR}; \
+      rm -rf build linux/build .dart_tool; \
+      flutter pub get; \
+      shadcn_files="$(find /root/.pub-cache/git -maxdepth 4 -type f -path "*/shadcn_flutter-*/lib/shadcn_flutter.dart" 2>/dev/null || true)"; \
+      if [[ -n "${shadcn_files}" ]]; then \
+        while IFS= read -r shadcn_file; do \
+          [[ -z "${shadcn_file}" ]] && continue; \
+          shadcn_dir="$(dirname "${shadcn_file}")"; \
+          if grep -q "show Icons, MaterialPageRoute, MaterialPage, SliverAppBar, FlutterLogo;" "${shadcn_file}"; then \
+            sed -i "s/show Icons, MaterialPageRoute, MaterialPage, SliverAppBar, FlutterLogo;/show Icons, MaterialPageRoute, MaterialPage, SliverAppBar, FlutterLogo, Brightness;/" "${shadcn_file}"; \
+          fi; \
+          find "${shadcn_dir}/src" -type f -name "*.dart" -print0 | xargs -0 perl -0777 -i -pe "\
+            s/translateByDouble\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/translate(\$1, \$2, \$3)/gs; \
+            s/scaleByDouble\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/scale(\$1, \$2, \$3)/gs;"; \
+        done <<< "${shadcn_files}"; \
+      fi; \
+      export WLR_ROOT=/usr/local; \
+      export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig:${PKG_CONFIG_PATH:-}; \
+      make release_bundle APP_NAME=${APP_NAME} WLR_ROOT=/usr/local WLR_SRC_ROOT=/src/wlroots; \
+    ' && \
+    echo "${APP_NAME} build complete"
+
+# Collect all runtime libraries into release bundle
+RUN mkdir -p /src/${PROJECT_DIR}/build/${APP_NAME}/release/bundle/lib && \
+    cd /src/${PROJECT_DIR}/build/${APP_NAME}/release/bundle/lib && \
+    # Copy locally-built libraries that won't be on host
+    cp /usr/local/lib/x86_64-linux-gnu/libwlroots-0.19.so . && \
+    cp /usr/local/lib/x86_64-linux-gnu/libdrm.so.2.4.0 libdrm.so.2 2>/dev/null; \
+    cp /usr/local/lib/x86_64-linux-gnu/libpixman-1.so.0.* libpixman-1.so.0 2>/dev/null; \
+    cp /usr/local/lib/x86_64-linux-gnu/libwayland-server.so.0.* libwayland-server.so.0 2>/dev/null; \
+    cp /usr/local/lib/x86_64-linux-gnu/libwayland-client.so.0.* libwayland-client.so.0 2>/dev/null; \
+    cp /usr/local/lib/x86_64-linux-gnu/libliftoff.so.0.* libliftoff.so.0 2>/dev/null; \
+    cp -L /usr/local/lib/x86_64-linux-gnu/libdisplay-info.so.2 . 2>/dev/null; \
+    cp -L /usr/local/lib/x86_64-linux-gnu/libseat.so.1 . 2>/dev/null; \
+    ls -lh /src/${PROJECT_DIR}/build/${APP_NAME}/release/bundle/lib/
+
+# Final verification: list the bundle
+RUN echo "=== Release bundle ===" && \
+    ls -lhR /src/${PROJECT_DIR}/build/${APP_NAME}/release/bundle/ && \
+    echo "=== Done ==="
+
+# Final stage: just Ubuntu 22.04 for extracting the bundle
+FROM ubuntu:22.04
+ARG APP_NAME
+ARG PROJECT_DIR
+
+COPY --from=builder /src/${PROJECT_DIR}/build/${APP_NAME}/release/bundle /app/${APP_NAME}
+
+WORKDIR /app/${APP_NAME}
+ENV LD_LIBRARY_PATH="/app/${APP_NAME}/lib:${LD_LIBRARY_PATH}"
+
+RUN printf '#!/usr/bin/env bash\nexec "/app/%s/%s" "$@"\n' "${APP_NAME}" "${APP_NAME}" > /entrypoint.sh && chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

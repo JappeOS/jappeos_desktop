@@ -16,7 +16,7 @@
 
 import 'package:event/event.dart';
 import 'package:flutter/services.dart';
-import 'package:jdwm_flutter/jdwm_flutter.dart';
+import 'package:jdwm/jdwm.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 // TODO: Outgoing animation
