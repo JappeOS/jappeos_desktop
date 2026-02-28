@@ -13,7 +13,9 @@
 migrate_working_dir/
 .private/
 /JappeOS/tempRemoved/
-/vendor/
+/vendor/flutter_clone/
+/vendor/wlroots/
+/vendor/wlroots-install/
 /deps/
 
 # IntelliJ related
