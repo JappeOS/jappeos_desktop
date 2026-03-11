@@ -73,7 +73,7 @@ class DesktopState extends State<Desktop> {
   void initState() {
     super.initState();
     _menuController = DesktopMenuController();
-    _menuRegistry.register(LauncherMenuEntry());
+    _menuRegistry.register(LauncherMenuEntry(_menuController));
     _menuRegistry.register(OverviewMenuEntry());
     _menuRegistry.register(QuickSettingsMenuEntry());
     _menuRegistry.register(NotificationMenuEntry());
@@ -94,15 +94,25 @@ class DesktopState extends State<Desktop> {
       wmKey: _wmControllerKey,
       providers: [
         ListenableProvider<AuthProvider>(create: (_) => AuthProvider()),
-        ListenableProvider<DesktopEntryProvider>(create: (_) => DesktopEntryProvider()),
+        ListenableProvider<DesktopEntryProvider>(create: (_) => DesktopEntryProvider(), lazy: false),
       ],
       theme: _getTheme(false),
       darkTheme: _getTheme(true),
       shortcuts: _shortcuts,
       actions: _actions,
       keybinds: _keybinds,
-      dynamicMonitorInsets: const EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT),
-      //monitors: _monitors,
+      monitorLayoutBuilder: (p0, p1) {
+        for (int i = 0; i < p1.length; i++) {
+          final p = p1[i];
+          if (p.isPrimary) {
+            p1[i] = p.copyWith(
+              margin: const EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT),
+            );
+            break;
+          }
+        }
+        return p1;
+      },
       monitorBuilder: (context, monitor) => Consumer<AuthProvider>(
         builder: (context, auth, _) {
           if (!auth.isLoggedIn) {
