@@ -1,3 +1,4 @@
 [submodule "vendor/jdwm"]
 	path = vendor/jdwm
 	url = https://github.com/JappeOS/jdwm.git
+	branch = main
