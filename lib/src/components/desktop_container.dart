@@ -25,7 +25,14 @@ class DesktopOverlayContainer extends StatelessWidget {
   final bool increasedBorderRadius;
   final Widget child;
 
-  const DesktopOverlayContainer({super.key, required this.child, this.width, this.height, this.padding, this.increasedBorderRadius = false});
+  const DesktopOverlayContainer({
+    super.key,
+    required this.child,
+    this.width,
+    this.height,
+    this.padding,
+    this.increasedBorderRadius = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -35,8 +42,17 @@ class DesktopOverlayContainer extends StatelessWidget {
       padding: padding,
       surfaceOpacity: Theme.of(context).surfaceOpacity,
       surfaceBlur: Theme.of(context).surfaceBlur,
-      borderRadius: increasedBorderRadius ? Theme.of(context).borderRadiusXl : Theme.of(context).borderRadiusLg,
-      //elevation: 8, TODO
+      borderRadius: increasedBorderRadius
+          ? Theme.of(context).borderRadiusXl
+          : Theme.of(context).borderRadiusLg,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withAlpha(75),
+          blurRadius: 20,
+          spreadRadius: 3,
+          offset: const Offset(0, 10),
+        ),
+      ],
       child: child,
     );
   }
