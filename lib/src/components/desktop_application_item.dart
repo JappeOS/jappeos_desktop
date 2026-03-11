@@ -42,12 +42,14 @@ class DesktopApplicationItem extends StatefulWidget {
   });
 
   factory DesktopApplicationItem.icon({
+    Key? key,
     required String entry,
     double sizeFactor = 1,
     BorderRadiusGeometry? borderRadius,
     void Function()? onPress,
   }) {
     return DesktopApplicationItem._(
+      key: key,
       entry: entry,
       showTitle: false,
       sizeFactor: sizeFactor,
@@ -57,11 +59,13 @@ class DesktopApplicationItem extends StatefulWidget {
   }
 
   factory DesktopApplicationItem.iconWithTitle({
+    Key? key,
     required String entry,
     BorderRadiusGeometry? borderRadius,
     void Function()? onPress,
   }) {
     return DesktopApplicationItem._(
+      key: key,
       entry: entry,
       showTitle: true,
       borderRadius: borderRadius,
