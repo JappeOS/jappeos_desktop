@@ -12,7 +12,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${SCRIPT_DIR}"
 
 CONFIG_FILE="${SCRIPT_DIR}/build_config.env"
@@ -30,6 +29,8 @@ WLR_SRC_ROOT="${WLR_SRC_ROOT:-${SCRIPT_DIR}/vendor/wlroots}"
 BACKEND_DIR="${BACKEND_DIR:-${SCRIPT_DIR}/vendor/jdwm/native}"
 TARGET="${APP_NAME:-$(basename "${SCRIPT_DIR}")}"
 PROJECT_DIR="${PROJECT_DIR:-$(basename "${SCRIPT_DIR}")}"
+DOCKER_CONTEXT_DIR="${DOCKER_CONTEXT_DIR:-${SCRIPT_DIR}}"
+DOCKER_PROJECT_DIR="${DOCKER_PROJECT_DIR:-${PROJECT_DIR}}"
 ARCH="${ARCH:-$(uname -m)}"
 OUTPUT_BASE="build/jappeos/${ARCH}"
 BUILDER_IMAGE="zenith-wlroots-builder"
@@ -73,7 +74,9 @@ Environment:
   WLR_SRC_ROOT  Path to wlroots source tree (default: <repo>/<project_dir>/vendor/wlroots)
   ARCH          Output architecture folder (default: uname -m)
   APP_NAME      Binary/app name (default from build_config.env)
-  PROJECT_DIR   Project directory name in docker build context (default from build_config.env)
+  PROJECT_DIR        Project directory name in docker build context (legacy default from build_config.env)
+  DOCKER_CONTEXT_DIR Docker build/mount context (default: directory containing this script)
+  DOCKER_PROJECT_DIR Project path inside docker context (auto-falls back to '.')
 EOF
 }
 
@@ -112,6 +115,25 @@ parse_args() {
         ;;
     esac
   done
+}
+
+resolve_docker_layout() {
+  if [[ ! -d "${DOCKER_CONTEXT_DIR}" ]]; then
+    echo "Missing DOCKER_CONTEXT_DIR: ${DOCKER_CONTEXT_DIR}"
+    exit 1
+  fi
+
+  DOCKER_CONTEXT_DIR="$(cd "${DOCKER_CONTEXT_DIR}" && pwd)"
+
+  if [[ ! -d "${DOCKER_CONTEXT_DIR}/${DOCKER_PROJECT_DIR}" ]]; then
+    if [[ "${DOCKER_CONTEXT_DIR}" == "${SCRIPT_DIR}" ]]; then
+      # Repo root context: project is context root itself.
+      DOCKER_PROJECT_DIR="."
+    else
+      echo "Missing project directory '${DOCKER_PROJECT_DIR}' inside DOCKER_CONTEXT_DIR '${DOCKER_CONTEXT_DIR}'"
+      exit 1
+    fi
+  fi
 }
 
 ensure_flutter_clone() {
@@ -180,13 +202,14 @@ prepare_flutter_linux_build() {
 }
 
 docker_build_images() {
+  resolve_docker_layout
   (cd "${SCRIPT_DIR}" && ./ensure_flutter_clone.sh)
   docker build -f "${SCRIPT_DIR}/Dockerfile.zenith-wlroots" --target builder \
-    --build-arg APP_NAME="${TARGET}" --build-arg PROJECT_DIR="${PROJECT_DIR}" \
-    -t "${BUILDER_IMAGE}" "${ROOT_DIR}"
+    --build-arg APP_NAME="${TARGET}" --build-arg PROJECT_DIR="${DOCKER_PROJECT_DIR}" \
+    -t "${BUILDER_IMAGE}" "${DOCKER_CONTEXT_DIR}"
   docker build -f "${SCRIPT_DIR}/Dockerfile.zenith-wlroots" \
-    --build-arg APP_NAME="${TARGET}" --build-arg PROJECT_DIR="${PROJECT_DIR}" \
-    -t "${RUNTIME_IMAGE}" "${ROOT_DIR}"
+    --build-arg APP_NAME="${TARGET}" --build-arg PROJECT_DIR="${DOCKER_PROJECT_DIR}" \
+    -t "${RUNTIME_IMAGE}" "${DOCKER_CONTEXT_DIR}"
 }
 
 ensure_builder_image() {
@@ -197,13 +220,16 @@ ensure_builder_image() {
 }
 
 run_docker_build() {
+  resolve_docker_layout
   local build_target="$1"
+  local container_project_dir="/work/${DOCKER_PROJECT_DIR}"
 
-  docker run --rm --user "$(id -u):$(id -g)" --entrypoint bash -v "${ROOT_DIR}:/work" "${BUILDER_IMAGE}" -lc "
+  docker run --rm --user "$(id -u):$(id -g)" --entrypoint bash -v "${DOCKER_CONTEXT_DIR}:/work" "${BUILDER_IMAGE}" -lc "
     set -e
-    cd /work/${PROJECT_DIR}
+    cd \"${container_project_dir}\"
     export LDFLAGS='-L/usr/local/lib -L/usr/local/lib/x86_64-linux-gnu -Wl,-rpath,/usr/local/lib -Wl,-rpath,/usr/local/lib/x86_64-linux-gnu'
-    make ${build_target} FLUTTER=/work/${PROJECT_DIR}/vendor/flutter_clone/bin/flutter WLR_ROOT=/work/${PROJECT_DIR}/vendor/wlroots-install WLR_SRC_ROOT=/work/${PROJECT_DIR}/vendor/wlroots BACKEND_DIR=/work/${PROJECT_DIR}/vendor/jdwm/native
+    export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:\${PKG_CONFIG_PATH:-}
+    make ${build_target} FLUTTER=\"${container_project_dir}/vendor/flutter_clone/bin/flutter\" WLR_ROOT=/usr/local WLR_SRC_ROOT=\"${container_project_dir}/vendor/wlroots\" BACKEND_DIR=\"${container_project_dir}/vendor/jdwm/native\"
   "
 }
 
@@ -221,6 +247,7 @@ export_bundle() {
   local mode="$1"
   local src_dir=""
   local out_dir=""
+  local have_wlroots=0
   src_dir="$(bundle_src_dir "${mode}")"
   out_dir="$(bundle_out_dir "${mode}")"
 
@@ -229,27 +256,56 @@ export_bundle() {
     exit 1
   fi
 
-  local wlroots_lib=""
-  if [[ -f "${WLR_ROOT}/lib/x86_64-linux-gnu/libwlroots-0.19.so" ]]; then
-    wlroots_lib="${WLR_ROOT}/lib/x86_64-linux-gnu/libwlroots-0.19.so"
-  elif [[ -f "${WLR_ROOT}/lib/libwlroots-0.19.so" ]]; then
-    wlroots_lib="${WLR_ROOT}/lib/libwlroots-0.19.so"
-  else
-    echo "Missing libwlroots-0.19.so under ${WLR_ROOT}/lib"
-    exit 1
-  fi
-
   rm -rf "${out_dir}"
   mkdir -p "${out_dir}"
   cp -a "${src_dir}/." "${out_dir}/"
   mkdir -p "${out_dir}/lib"
-  cp -f "${wlroots_lib}" "${out_dir}/lib/libwlroots-0.19.so"
+
+  # Prefer wlroots from docker runtime image (built with xwayland enabled).
+  if docker image inspect "${RUNTIME_IMAGE}" >/dev/null 2>&1; then
+    local runtime_cid=""
+    runtime_cid="$(docker create "${RUNTIME_IMAGE}")"
+    if docker cp "${runtime_cid}:/app/${TARGET}/lib/libwlroots-0.19.so" "${out_dir}/lib/libwlroots-0.19.so" >/dev/null 2>&1; then
+      have_wlroots=1
+    fi
+    docker rm "${runtime_cid}" >/dev/null
+  fi
+
+  # Fallback to builder image /usr/local install.
+  if (( have_wlroots == 0 )) && docker image inspect "${BUILDER_IMAGE}" >/dev/null 2>&1; then
+    local builder_cid=""
+    builder_cid="$(docker create "${BUILDER_IMAGE}")"
+    if docker cp "${builder_cid}:/usr/local/lib/x86_64-linux-gnu/libwlroots-0.19.so" "${out_dir}/lib/libwlroots-0.19.so" >/dev/null 2>&1; then
+      have_wlroots=1
+    fi
+    docker rm "${builder_cid}" >/dev/null
+  fi
+
+  # Final fallback for local (non-docker) workflows.
+  if (( have_wlroots == 0 )); then
+    local wlroots_lib=""
+    if [[ -f "${WLR_ROOT}/lib/x86_64-linux-gnu/libwlroots-0.19.so" ]]; then
+      wlroots_lib="${WLR_ROOT}/lib/x86_64-linux-gnu/libwlroots-0.19.so"
+    elif [[ -f "${WLR_ROOT}/lib/libwlroots-0.19.so" ]]; then
+      wlroots_lib="${WLR_ROOT}/lib/libwlroots-0.19.so"
+    fi
+    if [[ -n "${wlroots_lib}" ]]; then
+      cp -f "${wlroots_lib}" "${out_dir}/lib/libwlroots-0.19.so"
+      have_wlroots=1
+    fi
+  fi
+
+  if (( have_wlroots == 0 )); then
+    echo "Missing libwlroots-0.19.so (runtime image, builder image, and ${WLR_ROOT} fallback all failed)"
+    exit 1
+  fi
 
   cat > "${out_dir}/run_${TARGET}.sh" <<'SCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 export LD_LIBRARY_PATH="${DIR}/lib:${LD_LIBRARY_PATH:-}"
+export PATH="${DIR}/bin:${PATH}"
 exec "${DIR}/__APP_NAME__" "$@"
 SCRIPT
   sed -i "s/__APP_NAME__/${TARGET}/g" "${out_dir}/run_${TARGET}.sh"
@@ -264,7 +320,7 @@ copy_runtime_deps_from_image() {
   out_dir="$(bundle_out_dir "${mode}")"
 
   mkdir -p "${out_dir}/lib"
-  local libs=(libliftoff.so.0 libdisplay-info.so.2 libwayland-server.so.0 libwayland-client.so.0 libpixman-1.so.0 libdrm.so.2 libseat.so.1)
+  local libs=(libliftoff.so.0 libdisplay-info.so.2 libwayland-server.so.0 libwayland-client.so.0 libpixman-1.so.0 libdrm.so.2 libseat.so.1 libX11-xcb.so.1 libxcb.so.1 libxcb-composite.so.0 libxcb-render-util.so.0 libxcb-render.so.0 libxcb-res.so.0 libxcb-xfixes.so.0 libxcb-icccm.so.4 libxcb-ewmh.so.2)
   local copied=0
   local cid=""
 
@@ -296,6 +352,30 @@ copy_runtime_deps_from_image() {
       docker cp "${cid}:/usr/lib/x86_64-linux-gnu/${lib}" "${out_dir}/lib/${lib}" >/dev/null 2>&1 || true
     done
     docker rm "${cid}" >/dev/null
+  fi
+
+  mkdir -p "${out_dir}/bin"
+  local have_xwayland=0
+  if docker image inspect "${RUNTIME_IMAGE}" >/dev/null 2>&1; then
+    local runtime_cid=""
+    runtime_cid="$(docker create "${RUNTIME_IMAGE}")"
+    if docker cp "${runtime_cid}:/app/${TARGET}/bin/Xwayland" "${out_dir}/bin/Xwayland" >/dev/null 2>&1; then
+      chmod +x "${out_dir}/bin/Xwayland" || true
+      have_xwayland=1
+    fi
+    docker rm "${runtime_cid}" >/dev/null
+  fi
+  if (( have_xwayland == 0 )) && docker image inspect "${BUILDER_IMAGE}" >/dev/null 2>&1; then
+    local builder_cid=""
+    builder_cid="$(docker create "${BUILDER_IMAGE}")"
+    if docker cp "${builder_cid}:/usr/bin/Xwayland" "${out_dir}/bin/Xwayland" >/dev/null 2>&1; then
+      chmod +x "${out_dir}/bin/Xwayland" || true
+      have_xwayland=1
+    fi
+    docker rm "${builder_cid}" >/dev/null
+  fi
+  if (( have_xwayland == 0 )); then
+    echo "Warning: Xwayland binary not bundled; host /usr/bin/Xwayland is required for X11 apps."
   fi
 
   local missing=()

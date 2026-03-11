@@ -89,12 +89,16 @@ DEBUG_CPPFLAGS := $(COMMON_CPPFLAGS) -DDEBUG $(ASAN)
 PROFILE_CPPFLAGS := $(COMMON_CPPFLAGS) -DPROFILE
 RELEASE_CPPFLAGS := $(COMMON_CPPFLAGS) -O2
 
-COMMON_LDFLAGS := -linput -lwlroots-0.19 -lwayland-server -lwayland-client -lxkbcommon -lpixman-1 -ldrm \
-                   -lliftoff -ldisplay-info -lepoxy -lGLESv2 -lEGL -lGL -lpam \
-                   -L. -L$(DEPS_DIR)
+WLR_LDFLAGS :=
 ifdef WLR_ROOT
-COMMON_LDFLAGS += -L$(WLR_ROOT)/lib -L$(WLR_ROOT)/lib/x86_64-linux-gnu -Wl,-rpath,$(WLR_ROOT)/lib -Wl,-rpath,$(WLR_ROOT)/lib/x86_64-linux-gnu
+WLR_LDFLAGS += -L$(WLR_ROOT)/lib -L$(WLR_ROOT)/lib/x86_64-linux-gnu
+WLR_LDFLAGS += -Wl,-rpath,$(WLR_ROOT)/lib -Wl,-rpath,$(WLR_ROOT)/lib/x86_64-linux-gnu
 endif
+
+COMMON_LDFLAGS := $(WLR_LDFLAGS) \
+                   -L. -L$(DEPS_DIR) \
+                   -linput -lwlroots-0.19 -lwayland-server -lwayland-client -lxkbcommon -lpixman-1 -ldrm \
+                   -lliftoff -ldisplay-info -lepoxy -lGLESv2 -lEGL -lGL -lpam
 
 DEBUG_LDFLAGS := $(COMMON_LDFLAGS) -lflutter_engine_debug $(ASAN) -stdlib=libc++ -lc++abi -lpthread
 PROFILE_LDFLAGS := $(COMMON_LDFLAGS) -lflutter_engine_profile -stdlib=libc++ -lc++abi -lpthread

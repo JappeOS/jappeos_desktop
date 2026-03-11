@@ -285,6 +285,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.0"
+  fuzzywuzzy:
+    dependency: "direct main"
+    description:
+      name: fuzzywuzzy
+      sha256: "3004379ffd6e7f476a0c2091f38f16588dc45f67de7adf7c41aa85dec06b432c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.0"
   gal:
     dependency: transitive
     description:
@@ -362,7 +370,7 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: "2de597e572c46319983da32ea39ebae1de87d8cf"
+      resolved-ref: "808ae11d6f110c4b202ecf7461fdda4ec9eca746"
       url: "https://github.com/JappeOS/jappeos_desktop_base.git"
     source: git
     version: "1.0.0+1"

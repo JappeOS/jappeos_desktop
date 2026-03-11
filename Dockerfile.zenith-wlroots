@@ -59,8 +59,19 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     # GUI/X11 (Flutter Linux support)
     libgtk-3-dev \
     libx11-dev \
+    libx11-xcb-dev \
     libxext-dev \
     libxrender-dev \
+    libxcb1-dev \
+    libxcb-composite0-dev \
+    libxcb-render-util0-dev \
+    libxcb-render0-dev \
+    libxcb-res0-dev \
+    libxcb-xfixes0-dev \
+    libxcb-ewmh-dev \
+    libxcb-icccm4-dev \
+    xwayland \
+    xserver-xorg-dev \
     \
     # Other dependencies
     libpam0g-dev \
@@ -168,6 +179,22 @@ RUN echo 'pkgdatadir=/usr/share/hwdata' > /usr/local/share/pkgconfig/hwdata.pc &
     echo 'Description: Hardware identification databases' >> /usr/local/share/pkgconfig/hwdata.pc && \
     echo 'Version: 0.360' >> /usr/local/share/pkgconfig/hwdata.pc
 
+# Jammy may not ship xwayland.pc even when Xwayland is installed.
+# wlroots uses dependency('xwayland'), so provide a minimal fallback pc file.
+RUN if [ ! -f /usr/lib/x86_64-linux-gnu/pkgconfig/xwayland.pc ]; then \
+      printf '%s\n' \
+        'prefix=/usr' \
+        'includedir=${prefix}/include' \
+        'exec_prefix=${prefix}' \
+        'xwayland=/usr/bin/Xwayland' \
+        '' \
+        'Name: Xwayland' \
+        'Description: X Server for Wayland' \
+        'Version: 1' \
+        'Cflags: -I${includedir}' \
+        > /usr/local/share/pkgconfig/xwayland.pc; \
+    fi
+
 # Build wlroots 0.19.0
 RUN echo "=== Building wlroots 0.19.0 ===" && \
     export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:$PKG_CONFIG_PATH && \
@@ -181,7 +208,7 @@ RUN echo "=== Building wlroots 0.19.0 ===" && \
       -Drenderers=gles2 \
       -Dallocators=gbm \
       -Dsession=enabled \
-      -Dxwayland=disabled \
+      -Dxwayland=enabled \
       -Dexamples=false \
       -Dwrap_mode=nofallback && \
     ninja -C build/ && \
@@ -222,6 +249,7 @@ RUN echo "=== Building ${APP_NAME} ===" && \
 
 # Collect all runtime libraries into release bundle
 RUN mkdir -p /src/${PROJECT_DIR}/build/${APP_NAME}/release/bundle/lib && \
+    mkdir -p /src/${PROJECT_DIR}/build/${APP_NAME}/release/bundle/bin && \
     cd /src/${PROJECT_DIR}/build/${APP_NAME}/release/bundle/lib && \
     # Copy locally-built libraries that won't be on host
     cp /usr/local/lib/x86_64-linux-gnu/libwlroots-0.19.so . && \
@@ -232,6 +260,16 @@ RUN mkdir -p /src/${PROJECT_DIR}/build/${APP_NAME}/release/bundle/lib && \
     cp /usr/local/lib/x86_64-linux-gnu/libliftoff.so.0.* libliftoff.so.0 2>/dev/null; \
     cp -L /usr/local/lib/x86_64-linux-gnu/libdisplay-info.so.2 . 2>/dev/null; \
     cp -L /usr/local/lib/x86_64-linux-gnu/libseat.so.1 . 2>/dev/null; \
+    cp -L /usr/lib/x86_64-linux-gnu/libX11-xcb.so.1 . 2>/dev/null; \
+    cp -L /usr/lib/x86_64-linux-gnu/libxcb.so.1 . 2>/dev/null; \
+    cp -L /usr/lib/x86_64-linux-gnu/libxcb-composite.so.0 . 2>/dev/null; \
+    cp -L /usr/lib/x86_64-linux-gnu/libxcb-render-util.so.0 . 2>/dev/null; \
+    cp -L /usr/lib/x86_64-linux-gnu/libxcb-render.so.0 . 2>/dev/null; \
+    cp -L /usr/lib/x86_64-linux-gnu/libxcb-res.so.0 . 2>/dev/null; \
+    cp -L /usr/lib/x86_64-linux-gnu/libxcb-xfixes.so.0 . 2>/dev/null; \
+    cp -L /usr/lib/x86_64-linux-gnu/libxcb-icccm.so.4 . 2>/dev/null; \
+    cp -L /usr/lib/x86_64-linux-gnu/libxcb-ewmh.so.2 . 2>/dev/null; \
+    cp -L /usr/bin/Xwayland /src/${PROJECT_DIR}/build/${APP_NAME}/release/bundle/bin/Xwayland 2>/dev/null; \
     ls -lh /src/${PROJECT_DIR}/build/${APP_NAME}/release/bundle/lib/
 
 # Final verification: list the bundle
