@@ -126,16 +126,7 @@ class _DTopbarButtonNewState extends State<DTopbarButtonNew> {
 
     if (widget.shortcut != null) {
       final keybinds = GlobalKeybindScope.of(context);
-      keybinds.register(
-        widget.shortcut!,
-        () {
-          setState(() {});
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            widget.onPressed?.call(_globalPosition);
-          });
-          return true;
-        },
-      );
+      keybinds.register(widget.shortcut!, _handleKeybind);
     }
 
     super.didChangeDependencies();
@@ -145,9 +136,17 @@ class _DTopbarButtonNewState extends State<DTopbarButtonNew> {
   void dispose() {
     if (widget.shortcut != null) {
       final keybinds = GlobalKeybindScope.of(context);
-      keybinds.unregister(widget.shortcut!);
+      keybinds.unregister(widget.shortcut!, _handleKeybind);
     }
     super.dispose();
+  }
+
+  bool _handleKeybind() {
+    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onPressed?.call(_globalPosition);
+    });
+    return true;
   }
 
   @override
