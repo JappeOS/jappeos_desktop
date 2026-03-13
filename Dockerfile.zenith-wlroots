@@ -75,6 +75,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     \
     # Other dependencies
     libpam0g-dev \
+    libsystemd-dev \
     libstdc++-11-dev \
     libc++-dev \
     libc++abi-dev \
