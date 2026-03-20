@@ -272,7 +272,7 @@ class _LauncherMenuState extends State<LauncherMenu> {
                             child: DesktopApplicationItem.iconWithTitle(
                               key: ValueKey(e.key),
                               entry: e.key,
-                              onPress: () => _onDesktopMenuPressed(e.value),
+                              onPressed: () => _onDesktopMenuPressed(e.value),
                             ),
                           );
                         },
