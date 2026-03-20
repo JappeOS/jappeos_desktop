@@ -16,6 +16,7 @@
 
 import 'dart:io';
 
+import 'package:flutter_svg/svg.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:freedesktop_desktop_entry/freedesktop_desktop_entry.dart';
 
@@ -47,8 +48,32 @@ class DesktopEntryProvider extends ChangeNotifier {
       IconQuery(
         name: icon,
         size: 64,
-        extensions: ['png'],
+        extensions: ['png', 'svg'],
+        preferredThemes: ['Papirus', 'Papirus-Dark', 'Papirus-Light'],
       ),
+    );
+  }
+
+  Future<Widget> getIconWidget(DesktopEntry entry, {double size = 24}) async {
+    final iconFile = await getIcon(entry);
+    if (iconFile == null) {
+      return const Icon(Icons.question_mark);
+    }
+    if (iconFile.path.endsWith('.svg')) {
+      return SvgPicture.file(
+        iconFile,
+        width: size,
+        height: size,
+        errorBuilder: (context, error, stackTrace)
+            => const Icon(Icons.settings_applications),
+      );
+    }
+    return Image.file(
+      iconFile,
+      width: size,
+      height: size,
+      errorBuilder: (context, error, stackTrace)
+          => const Icon(Icons.settings_applications),
     );
   }
 
