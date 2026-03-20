@@ -77,12 +77,12 @@ class WifiQuickSetting extends StatelessWidget
       throw Exception('No Wi-Fi devices available');
     }
 
-    final connDevices = wifiDevices.where((d) => d.isConnected);
+    final enabledDevices = wifiDevices.where((d) => d.enabled);
     final enabled = _isEnabled(network);
     String subtitle = '';
     if (enabled) {
       int i = 0;
-      for (final d in connDevices) {
+      for (final d in enabledDevices) {
         subtitle += (i > 0 ? ', ' : '');
 
         if (d.state == NetworkDeviceState.connecting) {
