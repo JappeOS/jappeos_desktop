@@ -156,7 +156,7 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
   }
 
   void _computePosition(DesktopMenu menu) {
-    final bounds = widget.monitor.bounds;
+    final bounds = widget.monitor.usableBounds;
     final anchor = widget.controller.anchorPosition;
 
     const double pad = 8;
