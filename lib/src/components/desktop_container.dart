@@ -43,7 +43,7 @@ class DesktopOverlayContainer extends StatelessWidget {
       surfaceOpacity: Theme.of(context).surfaceOpacity,
       surfaceBlur: Theme.of(context).surfaceBlur,
       borderRadius: increasedBorderRadius
-          ? Theme.of(context).borderRadiusXl
+          ? Theme.of(context).borderRadiusLg * 2
           : Theme.of(context).borderRadiusLg,
       boxShadow: [
         BoxShadow(
