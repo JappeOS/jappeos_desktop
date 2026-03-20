@@ -41,26 +41,29 @@ class _QuickSettingsMenuState extends State<QuickSettingsMenu> {
   Widget build(BuildContext context) {
     return DesktopOverlayContainer(
       width: 450,
-      child: ChangeNotifierProvider(
-        create: (_) => QuickSettingsDetailsController(),
-        builder: (context, _) {
-          final controller = context.watch<QuickSettingsDetailsController>();
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 100, maxHeight: 550),
+        child: ChangeNotifierProvider(
+          create: (_) => QuickSettingsDetailsController(),
+          builder: (context, _) {
+            final controller = context.watch<QuickSettingsDetailsController>();
 
-          final child = controller.isOpen
-              ? KeyedSubtree(
-                  key: const ValueKey('details'),
-                  child: controller.active!.buildDetails(context),
-                )
-              : KeyedSubtree(
-                  key: const ValueKey('main'),
-                  child: _QuickSettingsMainPage(entry: widget.entry),
-                );
+            final child = controller.isOpen
+                ? KeyedSubtree(
+                    key: const ValueKey('details'),
+                    child: controller.active!.buildDetails(context),
+                  )
+                : KeyedSubtree(
+                    key: const ValueKey('main'),
+                    child: _QuickSettingsMainPage(entry: widget.entry),
+                  );
 
-          return _QuickSettingsPageSwitcher(
-            direction: controller.direction,
-            child: child,
-          );
-        },
+            return _QuickSettingsPageSwitcher(
+              direction: controller.direction,
+              child: child,
+            );
+          },
+        ),
       ),
     );
   }
