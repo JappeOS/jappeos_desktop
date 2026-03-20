@@ -14,14 +14,18 @@
 //  You should have received a copy of the GNU Affero General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+// ignore_for_file: avoid_function_literals_in_foreach_calls
+
 import 'package:collection/collection.dart';
 import 'package:jappeos_services/jappeos_services.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+import '../quick_setting_details_page.dart';
 import '../quick_setting_item.dart';
 import '../quick_setting_tile.dart';
 import 'quick_setting_contributor.dart';
+import 'quick_settings_details_controller.dart';
 
 class WifiQuickSetting extends StatelessWidget
     implements QuickSettingContributor {
@@ -45,7 +49,17 @@ class WifiQuickSetting extends StatelessWidget
 
   @override
   Widget buildDetails(BuildContext context) {
-    return const WifiDetailsPage();
+    final network = context.watch<NetworkManagerService>();
+    final enabled = _isEnabled(network);
+    return QuickSettingDetailsPage(
+      icon: _icon(network),
+      title: _title(network),
+      value: enabled,
+      onToggle: (_) => _toggle(network),
+      child: enabled
+          ? const _WifiNetworkList()
+          : const Text('Wi-Fi is off'),
+    );
   }
 
   @override
@@ -64,7 +78,7 @@ class WifiQuickSetting extends StatelessWidget
     }
 
     final connDevices = wifiDevices.where((d) => d.isConnected);
-    final enabled = connDevices.isNotEmpty;
+    final enabled = _isEnabled(network);
     String subtitle = '';
     if (enabled) {
       int i = 0;
@@ -92,23 +106,31 @@ class WifiQuickSetting extends StatelessWidget
 
     final item = QuickSettingChipItem(
       id: id,
-      title: wifiDevices.length == 1
-          ? 'Wi-Fi'
-          : 'Wi-Fi (${wifiDevices.length})',
-      icon: _getIcon(wifiDevices).$1,
+      title: _title(network),
+      icon: _icon(network),
       isEnabled: enabled,
       subtitle: subtitle,
       hasDetails: true,
-      onToggle: () {
-        // network.setWifiEnabled(...)
-      },
-      onOpenDetails: () {
-        // open Wi-Fi panel
-      },
+      onToggle: () => _toggle(network),
+      onOpenDetails: () => QuickSettingsDetailsController.of(context).open(this),
     );
 
     return QuickSettingChipTile(item: item);
   }
+
+  String _title(NetworkManagerService p) => p.wifiDevices.length == 1
+          ? 'Wi-Fi'
+          : 'Wi-Fi (${p.wifiDevices.length})';
+
+  IconData _icon(NetworkManagerService p) => _getIcon(p.wifiDevices).$1;
+
+  bool _isEnabled(NetworkManagerService p)
+      => p.wifiDevices.any((d) => d.enabled);
+
+  void _toggle(NetworkManagerService p)
+      => _isEnabled(p)
+          ? p.wifiDevices.forEach((d) => p.setEnabled(d, false))
+          : p.setEnabled(p.wifiDevices.first, true);
 
   (IconData, bool) _getIcon(Iterable<NetworkWifiDevice> devices) {
     if (devices.isEmpty) {
@@ -177,11 +199,43 @@ class WifiQuickSetting extends StatelessWidget
   }
 }
 
-class WifiDetailsPage extends StatelessWidget {
-  const WifiDetailsPage({super.key});
+class _WifiNetworkList extends StatefulWidget {
+  const _WifiNetworkList({super.key});
+
+  @override
+  State<_WifiNetworkList> createState() => _WifiNetworkListState();
+}
+
+class _WifiNetworkListState extends State<_WifiNetworkList> {
+  @override
+  void initState() {
+    super.initState();
+    final network = context.read<NetworkManagerService>();
+    for (final device in network.wifiDevices) {
+      network.scanWifi(device);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Text("Not implemented yet");
+    final network = context.watch<NetworkManagerService>();
+
+    final wifiAps = network.wifiDevices.expand((d) => d.accessPoints).toList();
+    if (wifiAps.isEmpty) {
+      return const Text('No Wi-Fi networks available');
+    }
+
+    return ListView.builder(itemBuilder: (context, index) {
+      final ap = wifiAps.elementAt(index);
+      return GhostButton(
+        leading: Icon(Icons.wifi),
+        trailing: ap.connected ? const Icon(Icons.check) : null,
+        child: Text(
+          ap.ssid,
+          textAlign: TextAlign.start,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    });
   }
 }
