@@ -16,8 +16,6 @@
 
 // ignore_for_file: library_private_types_in_public_api
 
-import 'dart:io';
-
 import 'package:freedesktop_desktop_entry/freedesktop_desktop_entry.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -26,7 +24,9 @@ import '../provider/desktop_entry_provider.dart';
 
 /// A basic widget that has the logo of an app and also the name below.
 class DesktopApplicationItem extends StatefulWidget {
-  final String entry;
+  final bool custom;
+  final Widget? customChild;
+  final String? entry;
   final bool showTitle;
   final double sizeFactor;
   final BorderRadiusGeometry? borderRadius;
@@ -34,7 +34,9 @@ class DesktopApplicationItem extends StatefulWidget {
 
   const DesktopApplicationItem._({
     super.key,
-    required this.entry,
+    this.custom = false,
+    this.customChild,
+    this.entry,
     this.showTitle = true,
     this.sizeFactor = 1.0,
     this.borderRadius,
@@ -46,7 +48,7 @@ class DesktopApplicationItem extends StatefulWidget {
     required String entry,
     double sizeFactor = 1,
     BorderRadiusGeometry? borderRadius,
-    void Function()? onPress,
+    void Function()? onPressed,
   }) {
     return DesktopApplicationItem._(
       key: key,
@@ -54,7 +56,7 @@ class DesktopApplicationItem extends StatefulWidget {
       showTitle: false,
       sizeFactor: sizeFactor,
       borderRadius: borderRadius,
-      onPressed: onPress,
+      onPressed: onPressed,
     );
   }
 
@@ -62,14 +64,32 @@ class DesktopApplicationItem extends StatefulWidget {
     Key? key,
     required String entry,
     BorderRadiusGeometry? borderRadius,
-    void Function()? onPress,
+    void Function()? onPressed,
   }) {
     return DesktopApplicationItem._(
       key: key,
       entry: entry,
       showTitle: true,
       borderRadius: borderRadius,
-      onPressed: onPress,
+      onPressed: onPressed,
+    );
+  }
+
+  factory DesktopApplicationItem.custom({
+    Key? key,
+    required Widget child,
+    double sizeFactor = 1,
+    BorderRadiusGeometry? borderRadius,
+    void Function()? onPressed,
+  }) {
+    return DesktopApplicationItem._(
+      key: key,
+      custom: true,
+      customChild: child,
+      showTitle: false,
+      sizeFactor: sizeFactor,
+      borderRadius: borderRadius,
+      onPressed: onPressed,
     );
   }
 
@@ -79,7 +99,7 @@ class DesktopApplicationItem extends StatefulWidget {
 
 class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
   late Future<Map<String, DesktopEntry>> _entriesFuture;
-  Future<File?>? _iconFuture;
+  Future<Widget>? _iconFuture;
   String? _title;
   bool _isHovered = false, _isPressed = false;
 
@@ -98,13 +118,21 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    /*final colorScheme = theme.colorScheme;
     final hoveredColor = colorScheme.primary.withValues(alpha: 0.08);
-    final pressedColor = colorScheme.primary.withValues(alpha: 0.12);
+    final pressedColor = colorScheme.primary.withValues(alpha: 0.12);*/
 
     var iconSize = _width - (4 * theme.scaling) * 1.25;
 
     if (iconSize > 60) iconSize = 60;
+
+    if (widget.custom) {
+      return _buildBase(
+        iconSize: iconSize,
+        onTap: widget.onPressed,
+        child: widget.customChild,
+      );
+    }
 
     return FutureBuilder(
       future: _entriesFuture,
@@ -117,12 +145,19 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
           final data = snapshot.data!;
           entry = data[widget.entry];
           _title ??= entry?.entries[DesktopEntryKey.name.string]?.value ?? "Unknown";
-          _iconFuture ??= desktopEntryProvider.getIcon(entry!);
+          _iconFuture ??= desktopEntryProvider.getIconWidget(entry!, size: iconSize);
         }
 
         final title = _title ?? "Unknown";
 
-        return SizedBox(
+        return _buildBase(
+          iconSize: iconSize,
+          title: title,
+          onTap: widget.onPressed
+              ?? (entry != null ? () => desktopEntryProvider.launchDesktopEntry(entry!) : null),
+        );
+
+        /*return SizedBox(
           width: _width,
           height: _height,
           child: RepaintBoundary(
@@ -180,8 +215,80 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
               ),
             ),
           ),
-        );
+        );*/
       },
+    );
+  }
+
+  Widget _buildBase({required double iconSize, String title = "Unknown", void Function()? onTap, Widget? child}) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final hoveredColor = colorScheme.primary.withValues(alpha: 0.08);
+    final pressedColor = colorScheme.primary.withValues(alpha: 0.12);
+    return SizedBox(
+      width: _width,
+      height: _height,
+      child: RepaintBoundary(
+        child: Tooltip(
+          tooltip: (_) => TooltipContainer(child: Text(title)),
+          child: MouseRegion(
+            onEnter: (p0) => setState(() => _isHovered = true),
+            onExit: (p0) => setState(() => _isHovered = false),
+            child: GestureDetector(
+              onTap: onTap,
+              onTapDown: (p0) => setState(() => _isPressed = true),
+              onTapUp: (_) => setState(() => _isPressed = false),
+              onTapCancel: () => setState(() => _isPressed = false),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _isPressed
+                      ? pressedColor
+                      : (_isHovered ? hoveredColor : null),
+                  borderRadius: widget.borderRadius
+                      ?? BorderRadius.circular(8 * theme.scaling),
+                ),
+                child: Padding(
+                  padding: widget.showTitle
+                      ? EdgeInsets.symmetric(vertical: 4 * theme.scaling)
+                      : EdgeInsets.zero,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: 4 * theme.scaling,
+                    children: [
+                      AnimatedScale(
+                        scale: _isPressed ? 0.7 : 1,
+                        curve: Curves.easeOut,
+                        duration: const Duration(milliseconds: 75),
+                        /*onEnd: () {
+                          if (_isPressed) setState(() => _isPressed = false);
+                        },*/
+                        child: child != null
+                            ? SizedBox(
+                                width: iconSize,
+                                height: iconSize,
+                                child: child,
+                              )
+                            : _buildIcon(
+                                width: iconSize,
+                                height: iconSize,
+                              ),
+                      ),
+                      if (widget.showTitle) Text(
+                        title,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                      ).small(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -200,15 +307,10 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) return fallbackIcon;
         if (!snapshot.hasData || snapshot.data == null) return fallbackIcon;
-
-        return Image.file(
-          snapshot.data!,
+        return SizedBox(
           width: width,
           height: height,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return fallbackIcon;
-          },
+          child: snapshot.data!,
         );
       },
     );
