@@ -199,6 +199,8 @@ class DesktopState extends State<Desktop> {
 
   Widget _buildDock() {
     return DesktopDock(
+      registry: _menuRegistry,
+      menuController: _menuController,
       hasWindowIntersection: false,
       items: [
         /*(

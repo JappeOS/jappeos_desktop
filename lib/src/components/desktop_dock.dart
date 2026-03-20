@@ -16,19 +16,26 @@
 
 // ignore_for_file: library_private_types_in_public_api
 
+import 'package:jappeos_desktop/src/desktop_menu_manager/menus/launcher_menu.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:widget_and_text_animator/widget_and_text_animator.dart';
 
+import '../desktop_menu_manager/desktop_menu_controller.dart';
+import '../desktop_menu_manager/desktop_menu_registry.dart';
 import 'desktop_application_item.dart';
 import 'desktop_container.dart';
 
 /// The dock that shows pinned and open apps.
 class DesktopDock extends StatefulWidget {
+  final DesktopMenuRegistry registry;
+  final DesktopMenuController menuController;
   final bool hasWindowIntersection;
   final List<String> items;
 
   const DesktopDock({
     super.key,
+    required this.registry,
+    required this.menuController,
     required this.hasWindowIntersection,
     required this.items,
   });
@@ -43,6 +50,30 @@ class _DesktopDockState extends State<DesktopDock> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final pad = 8 * theme.scaling;
+    final itemRad = BorderRadius.circular((theme.radiusLg * 2) - pad);
+    final List<Widget> items = [
+      DesktopApplicationItem.custom(
+        sizeFactor: 0.75,
+        borderRadius: itemRad,
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: Icon(Icons.apps),
+        ),
+        onPressed: () => widget.menuController.openMenu(
+          widget.registry.entries.firstWhere((e) => e is LauncherMenuEntry)
+              .createMenu(),
+        ),
+      ),
+      ...widget.items.map(
+        (item) => DesktopApplicationItem.icon(
+          sizeFactor: 0.75,
+          borderRadius: itemRad,
+          entry: item,
+        ),
+      ),
+    ];
     return Align(
       alignment: Alignment.bottomCenter,
       widthFactor: 1.0,
@@ -64,13 +95,10 @@ class _DesktopDockState extends State<DesktopDock> {
                 child: _showDock ? DesktopOverlayContainer(
                   key: const ValueKey('dockShown'),
                   increasedBorderRadius: true,
-                  padding: EdgeInsets.all(4 * Theme.of(context).scaling),
+                  padding: EdgeInsets.all(pad),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: List.generate(
-                      widget.items.length,
-                      (index) => DesktopApplicationItem.icon( entry: widget.items[index]),
-                    ),
+                    children: items,
                   ),
                 ) : SizedBox(key: const ValueKey('dockHidden'), height: 2 * Theme.of(context).scaling),
               ),
