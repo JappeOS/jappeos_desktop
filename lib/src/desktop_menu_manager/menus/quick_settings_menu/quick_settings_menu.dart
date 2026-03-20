@@ -177,7 +177,6 @@ class _QuickSettingsPowerPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final powerService = context.read<PowerManagerService>();
     final items = contributors
         .where((c) => c.canBuild(context))
         .map((c) => c.build(context))
@@ -196,11 +195,7 @@ class _QuickSettingsPowerPanel extends StatelessWidget {
       IconButton.secondary(icon: const Icon(Icons.settings), onPressed: () {}),
       if (hasNoItems)
         const Spacer(),
-      _QuickSettingsPowerButton(
-        onSuspend: () => powerService.suspend(),
-        onRestart: () => powerService.reboot(),
-        onPowerOff: () => powerService.shutdown(),
-      ),
+      _QuickSettingsPowerButton(),
     ]);
 
     return Row(
@@ -280,19 +275,12 @@ class _QuickSettingsSliderPanel extends StatelessWidget {
 }
 
 class _QuickSettingsPowerButton extends StatelessWidget {
-  final void Function()? onSuspend;
-  final void Function()? onRestart;
-  final void Function()? onPowerOff;
-
-  const _QuickSettingsPowerButton({
-    super.key,
-    this.onSuspend,
-    this.onRestart,
-    this.onPowerOff,
-  });
+  const _QuickSettingsPowerButton({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final powerService = context.read<PowerManagerService>();
+    final sessionService = context.read<SessionManagerService>();
     return IconButton.secondary(
       icon: const Icon(Icons.power_settings_new),
       onPressed: () {
@@ -302,16 +290,21 @@ class _QuickSettingsPowerButton extends StatelessWidget {
             return DropdownMenu(
               children: [
                 MenuButton(
-                  onPressed: (_) => onSuspend?.call(),
+                  onPressed: (_) => powerService.suspend(),
                   child: const Text('Suspend'),
                 ),
                 MenuButton(
-                  onPressed: (_) => onRestart?.call(),
+                  onPressed: (_) => powerService.reboot(),
                   child: const Text('Restart'),
                 ),
                 MenuButton(
-                  onPressed: (_) => onPowerOff?.call(),
+                  onPressed: (_) => powerService.shutdown(),
                   child: const Text('Power Off'),
+                ),
+                MenuDivider(),
+                MenuButton(
+                  onPressed: (_) => sessionService.stopSession(),
+                  child: const Text('Log Out'),
                 ),
               ],
             );
