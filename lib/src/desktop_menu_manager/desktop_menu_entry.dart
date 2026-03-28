@@ -48,6 +48,7 @@ abstract class DesktopMenuEntry extends ChangeNotifier {
       if (!_isOpen) return; // <-- callback already triggered
       _isOpen = false;
       notifyListeners();
+      return;
     }
 
     controller.openMenu(
