@@ -63,29 +63,55 @@ class QuickSettingChipTile extends StatelessWidget {
   }
 }
 
-class QuickSettingSliderTile extends StatelessWidget {
+class QuickSettingSliderTile extends StatefulWidget {
   final QuickSettingSliderItem item;
 
   const QuickSettingSliderTile({super.key, required this.item});
 
   @override
+  State<QuickSettingSliderTile> createState() => _QuickSettingSliderTileState();
+}
+
+class _QuickSettingSliderTileState extends State<QuickSettingSliderTile> {
+  double? _localValue; // non-null only while dragging
+
+  @override
+  void didUpdateWidget(QuickSettingSliderTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the external value changed while NOT dragging, clear local override
+    if (oldWidget.item.value != widget.item.value) {
+      _localValue = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final displayValue = _localValue ?? widget.item.value;
+
     return Row(
       mainAxisSize: MainAxisSize.max,
+      spacing: 4 * Theme.of(context).scaling,
       children: [
         IconButton.ghost(
-          icon: Icon(item.icon),
-          onPressed: item.onIconTap ?? (() {}),
+          icon: Icon(widget.item.icon),
+          onPressed: widget.item.onIconTap ?? (() {}),
         ),
         Expanded(
           child: Slider(
-            value: SliderValue.single(item.value),
-            onChanged: (p0) => item.onChanged?.call(p0.value),
+            value: SliderValue.single(displayValue),
+            onChanged: (p0) {
+              setState(() => _localValue = p0.value);
+              widget.item.onChanged?.call(p0.value);
+            },
+            onChangeEnd: (p0) {
+              // Release local override - let the service value take over
+              setState(() => _localValue = null);
+            },
           ),
         ),
         IconButton.ghost(
           icon: const Icon(Icons.arrow_drop_down),
-          onPressed: item.hasDetails ? item.onOpenDetails : null,
+          onPressed: widget.item.hasDetails ? widget.item.onOpenDetails : null,
         ),
       ],
     );
