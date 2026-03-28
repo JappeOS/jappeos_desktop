@@ -112,8 +112,8 @@ class _DTopbarButtonNewState extends State<DTopbarButtonNew> {
   static const double _kIconSize = 17;
   static const double _kHeight = 26;
 
-  bool _init = false;
   Offset _globalPosition = Offset.zero;
+  LogicalKeySet? _registeredShortcut;
 
   bool _hovering = false;
   final _borderRad = BorderRadius.circular(100);
@@ -121,22 +121,39 @@ class _DTopbarButtonNewState extends State<DTopbarButtonNew> {
 
   @override
   void didChangeDependencies() {
-    if (_init) return;
-    _init = true;
+    super.didChangeDependencies();
+    _updateKeybindRegistration();
+  }
 
-    if (widget.shortcut != null) {
-      final keybinds = GlobalKeybindScope.of(context);
-      keybinds.register(widget.shortcut!, _handleKeybind);
+  @override
+  void didUpdateWidget(DTopbarButtonNew oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.shortcut != widget.shortcut) {
+      _updateKeybindRegistration();
+    }
+  }
+
+  void _updateKeybindRegistration() {
+    final keybinds = GlobalKeybindScope.of(context);
+
+    // Unregister the old shortcut if it changed or was removed
+    if (_registeredShortcut != null) {
+      keybinds.unregister(_registeredShortcut!, _handleKeybind);
+      _registeredShortcut = null;
     }
 
-    super.didChangeDependencies();
+    // Register the new one
+    if (widget.shortcut != null) {
+      keybinds.register(widget.shortcut!, _handleKeybind);
+      _registeredShortcut = widget.shortcut;
+    }
   }
 
   @override
   void dispose() {
-    if (widget.shortcut != null) {
+    if (_registeredShortcut != null) {
       final keybinds = GlobalKeybindScope.of(context);
-      keybinds.unregister(widget.shortcut!, _handleKeybind);
+      keybinds.unregister(_registeredShortcut!, _handleKeybind);
     }
     super.dispose();
   }
