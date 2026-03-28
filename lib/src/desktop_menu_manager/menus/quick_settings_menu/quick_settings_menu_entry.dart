@@ -15,11 +15,12 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:flutter/services.dart';
-import 'package:jappeos_desktop/src/desktop_menu_manager/menus/quick_settings_menu/quick_settings/battery_quick_setting.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../../desktop_menu_controller.dart';
 import '../../desktop_menu_entry.dart';
+import 'quick_settings/battery_quick_setting.dart';
+import 'quick_settings/bluetooth_quick_setting.dart';
 import 'quick_settings_menu.dart';
 import 'quick_settings/audio_quick_setting.dart';
 import 'quick_settings/brightness_quick_setting.dart';
@@ -34,6 +35,7 @@ class QuickSettingsMenuEntry extends DesktopMenuEntry {
     const AudioQuickSetting(),
     const WifiQuickSetting(),
     const EthernetQuickSetting(),
+    const BluetoothQuickSetting(),
     const ThemeQuickSetting(),
     const BrightnessQuickSetting(),
   ];
