@@ -21,16 +21,16 @@ import 'quick_settings/quick_settings_details_controller.dart';
 class QuickSettingDetailsPage extends StatelessWidget {
   final IconData icon;
   final String title;
-  final bool value;
-  final void Function(bool) onToggle;
+  final bool? value;
+  final void Function(bool)? onToggle;
   final Widget child;
 
   const QuickSettingDetailsPage({
     super.key,
     required this.icon,
     required this.title,
-    required this.value,
-    required this.onToggle,
+    this.value,
+    this.onToggle,
     required this.child,
   });
 
@@ -59,7 +59,7 @@ class QuickSettingDetailsPage extends StatelessWidget {
               ),
             ),
           ),
-          child,
+          Flexible(child: child),
         ],
       ),
     );
@@ -74,7 +74,10 @@ class QuickSettingDetailsPage extends StatelessWidget {
     Icon(icon),
     Text(title).semiBold(),
     const Spacer(),
-    Switch(value: value, onChanged: onToggle),
+    if (value != null)
+      Switch(value: value!, onChanged: onToggle)
+    else
+      SizedBox.square(dimension: theme.typography.normal.fontSize),
     Gap(2 * theme.scaling),
   ];
 }
