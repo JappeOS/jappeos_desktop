@@ -34,6 +34,10 @@ class DesktopMenuController extends ChangeNotifier {
     Offset? position,
     void Function()? closeCallback,
   }) {
+    if (_currentMenu != null) {
+      closeMenu();
+    }
+
     _currentMenu = menu;
     _anchorPosition = position;
 
@@ -53,9 +57,9 @@ class DesktopMenuController extends ChangeNotifier {
 
     ServicesBinding.instance.keyboard.removeHandler(_onKey);
 
-    _currentMenu?.onClose.broadcast();
-    _currentMenu?.onOpen.unsubscribeAll();
-    _currentMenu?.onClose.unsubscribeAll();
+    _currentMenu!.onClose.broadcast();
+    _currentMenu!.onOpen.unsubscribeAll();
+    _currentMenu!.onClose.unsubscribeAll();
 
     _currentMenu = null;
     _anchorPosition = null;
