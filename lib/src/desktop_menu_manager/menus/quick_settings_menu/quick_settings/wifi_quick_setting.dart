@@ -18,6 +18,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:jappeos_services/jappeos_services.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -77,17 +78,18 @@ class WifiQuickSetting extends StatelessWidget
       throw Exception('No Wi-Fi devices available');
     }
 
-    final enabledDevices = wifiDevices.where((d) => d.enabled);
     final enabled = _isEnabled(network);
     String subtitle = '';
     if (enabled) {
       int i = 0;
-      for (final d in enabledDevices) {
+      for (final d in wifiDevices) {
         subtitle += (i > 0 ? ', ' : '');
 
         if (d.state == NetworkDeviceState.connecting) {
           subtitle += '...';
         } else if (d.state == NetworkDeviceState.disconnected) {
+          subtitle += 'Online';
+        } else if (d.state == NetworkDeviceState.unavailable) {
           subtitle += 'Off';
         } else if (d.state == NetworkDeviceState.connected) {
           subtitle += d.accessPoints
@@ -125,14 +127,14 @@ class WifiQuickSetting extends StatelessWidget
   IconData _icon(NetworkManagerService p) => _getIcon(p.wifiDevices).$1;
 
   bool _isEnabled(NetworkManagerService p)
-      => p.wifiDevices.any((d) => d.enabled);
+      => p.wifiDevices.any((d) => !d.isUnavailable);
 
   void _toggle(NetworkManagerService p)
       => _isEnabled(p)
           ? p.wifiDevices.forEach((d) => p.setEnabled(d, false))
           : p.setEnabled(p.wifiDevices.first, true);
 
-  (IconData, bool) _getIcon(Iterable<NetworkWifiDevice> devices) {
+  (IconData i, bool show) _getIcon(Iterable<NetworkWifiDevice> devices) {
     if (devices.isEmpty) {
       return (Icons.signal_wifi_off, false);
     }
@@ -159,6 +161,7 @@ class WifiQuickSetting extends StatelessWidget
           hasConnecting = true;
           break;
 
+        case NetworkDeviceState.unavailable:
         case NetworkDeviceState.disconnected:
           // Nothing to track
           break;
@@ -173,15 +176,7 @@ class WifiQuickSetting extends StatelessWidget
     if (connectedCount > 0) {
       final avgSignal = sumSignal ~/ connectedCount;
 
-      if (avgSignal >= 75) {
-        return (Icons.signal_wifi_4_bar, true);
-      } else if (avgSignal >= 50) {
-        return (Icons.network_wifi_3_bar, true);
-      } else if (avgSignal >= 25) {
-        return (Icons.network_wifi_2_bar, true);
-      } else {
-        return (Icons.network_wifi_1_bar, true);
-      }
+      return (_iconFromSignalStrenth(avgSignal), true);
     }
 
     // 2 None connected, but one or more connecting
@@ -197,45 +192,330 @@ class WifiQuickSetting extends StatelessWidget
     // 4 All disconnected
     return (Icons.signal_wifi_off, false);
   }
+
+  static IconData _iconFromSignalStrenth(int strength, [bool lock = false]) {
+    if (strength >= 75) {
+      return lock ? Icons.signal_wifi_4_bar_lock : Icons.signal_wifi_4_bar;
+    } else if (strength >= 50) {
+      return lock ? Symbols.network_wifi_3_bar_locked : Symbols.network_wifi_3_bar;
+    } else if (strength >= 25) {
+      return lock ? Symbols.network_wifi_2_bar_locked : Symbols.network_wifi_2_bar;
+    } else {
+      return lock ? Symbols.network_wifi_1_bar_locked : Symbols.network_wifi_1_bar;
+    }
+  }
 }
 
 class _WifiNetworkList extends StatefulWidget {
-  const _WifiNetworkList({super.key});
+  const _WifiNetworkList();
 
   @override
   State<_WifiNetworkList> createState() => _WifiNetworkListState();
 }
 
 class _WifiNetworkListState extends State<_WifiNetworkList> {
-  @override
-  void initState() {
-    super.initState();
-    final network = context.read<NetworkManagerService>();
-    for (final device in network.wifiDevices) {
-      network.scanWifi(device);
-    }
-  }
+  final List<Object> _shownDetails = [];
+  final Set<Object> _scannedDevices = {};
 
   @override
   Widget build(BuildContext context) {
-    final network = context.watch<NetworkManagerService>();
+    final network = _shownDetails.isEmpty
+        ? context.watch<NetworkManagerService>()
+        : context.read<NetworkManagerService>();
 
-    final wifiAps = network.wifiDevices.expand((d) => d.accessPoints).toList();
+    final devices = network.wifiDevices.where((d) => !d.isUnavailable);
+
+    for (final device in devices) {
+      if (!_scannedDevices.contains(device.path)) {
+        _scannedDevices.add(device.path);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          network.scanWifi(device);
+        });
+      }
+    }
+
+    final wifiAps = _cleanAndOrderAccessPoints(
+      devices.expand((d) => d.accessPoints).toList(),
+    );
+
     if (wifiAps.isEmpty) {
       return const Text('No Wi-Fi networks available');
     }
 
-    return ListView.builder(itemBuilder: (context, index) {
-      final ap = wifiAps.elementAt(index);
-      return GhostButton(
-        leading: Icon(Icons.wifi),
-        trailing: ap.connected ? const Icon(Icons.check) : null,
-        child: Text(
-          ap.ssid,
-          textAlign: TextAlign.start,
-          overflow: TextOverflow.ellipsis,
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: wifiAps.length,
+      itemBuilder: (context, index) {
+        final ap = wifiAps.elementAt(index);
+        return _WifiNetworkItem(
+          key: ValueKey(ap.path),
+          ap: ap,
+          onShowDetailsChanged: (show) {
+            setState(() {
+              if (show) {
+                _shownDetails.add(ap.path);
+              } else {
+                _shownDetails.remove(ap.path);
+              }
+            });
+          },
+        );
+      },
+    );
+  }
+
+  List<WifiAccessPoint> _cleanAndOrderAccessPoints(List<WifiAccessPoint> accessPoints) {
+    bool isBetter(WifiAccessPoint a, WifiAccessPoint b) {
+      if (a.connected != b.connected) return a.connected; // connected first
+      if (a.strength != b.strength) return a.strength > b.strength; // stronger first
+      if (a.frequency != b.frequency) return a.frequency > b.frequency; // higher freq first
+      return a.path.toString().compareTo(b.path.toString()) < 0; // stable fallback
+    }
+
+    // 1) Deduplicate exact same AP object path (defensive).
+    final byPath = <String, WifiAccessPoint>{};
+    for (final ap in accessPoints) {
+      final pathKey = ap.path.toString();
+      final existing = byPath[pathKey];
+      if (existing == null || isBetter(ap, existing)) {
+        byPath[pathKey] = ap;
+      }
+    }
+
+    // 2) Collapse duplicates by SSID+security (same network name from multiple BSSIDs/radios).
+    final byNetwork = <String, WifiAccessPoint>{};
+    for (final ap in byPath.values) {
+      final ssid = ap.ssid.trim();
+      if (ssid.isEmpty) continue;
+      final networkKey = '${ssid.toLowerCase()}|${ap.security.toLowerCase()}';
+      final existing = byNetwork[networkKey];
+      if (existing == null || isBetter(ap, existing)) {
+        byNetwork[networkKey] = ap;
+      }
+    }
+
+    // 3) Final deterministic ordering.
+    final result = byNetwork.values.toList()
+      ..sort((a, b) {
+        if (a.connected != b.connected) return (b.connected ? 1 : 0) - (a.connected ? 1 : 0);
+        final strengthCmp = b.strength.compareTo(a.strength);
+        if (strengthCmp != 0) return strengthCmp;
+        final freqCmp = b.frequency.compareTo(a.frequency);
+        if (freqCmp != 0) return freqCmp;
+        final ssidCmp = a.ssid.toLowerCase().compareTo(b.ssid.toLowerCase());
+        if (ssidCmp != 0) return ssidCmp;
+        return a.path.toString().compareTo(b.path.toString());
+      });
+
+    return List<WifiAccessPoint>.unmodifiable(result);
+  }
+}
+
+class _WifiNetworkItem extends StatefulWidget {
+  final WifiAccessPoint ap;
+  final void Function(bool)? onShowDetailsChanged;
+
+  const _WifiNetworkItem({super.key, required this.ap, this.onShowDetailsChanged});
+
+  @override
+  State<_WifiNetworkItem> createState() => _WifiNetworkItemState();
+}
+
+class _WifiNetworkItemState extends State<_WifiNetworkItem> {
+  bool _hovered = false;
+  bool _showDetails = false;
+  bool _connecting = false;
+  String _password = '';
+  String _passwordError = '';
+
+  bool get _hasSecurity => widget.ap.security.isNotEmpty;
+  bool get _isConnected => widget.ap.connected;
+
+  @override
+  void dispose() {
+    if (_showDetails) {
+      widget.onShowDetailsChanged?.call(false);
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return _buildBase(
+      onPressed: () async {
+        if (_connecting) return;
+        if (!_showDetails && _isConnected) {
+          await _disconnect();
+          return;
+        }
+        if (!_showDetails && !await _tryConnect() && mounted) {
+          setState(() {
+            _passwordError = '';
+            _showDetails = true;
+            widget.onShowDetailsChanged?.call(true);
+          });
+        }
+      },
+      onTapOutside: () => setState(() {
+        _showDetails = false;
+        widget.onShowDetailsChanged?.call(false);
+      }),
+      onHover: (v) => setState(() => _hovered = v),
+      hasHover: _hovered,
+      theme: theme,
+      child: _buildContent(theme),
+    );
+  }
+
+  Widget _buildBase({
+    required Widget child,
+    required ThemeData theme,
+    VoidCallback? onTapOutside,
+    VoidCallback? onPressed,
+    void Function(bool)? onHover,
+    bool hasHover = false,
+  }) => TapRegion(
+    onTapOutside: (_) => onTapOutside?.call(),
+    onTapInside: _showDetails ? (_) => onPressed?.call() : null,
+    behavior: HitTestBehavior.translucent,
+    child: MouseRegion(
+      onEnter: (_) => onHover?.call(true),
+      onExit: (_) => onHover?.call(false),
+      opaque: false,
+      hitTestBehavior: HitTestBehavior.translucent,
+      child: _showDetails
+      ? Padding(
+        padding: EdgeInsets.symmetric(vertical: 4 * theme.scaling),
+        child: Card(
+          filled: true,
+          fillColor: hasHover
+              ? theme.colorScheme.secondary
+              : theme.colorScheme.card,
+          child: child,
         ),
-      );
-    });
+      )
+      : GhostButton(
+        onPressed: onPressed,
+        child: child,
+      ),
+    ),
+  );
+
+  Widget _buildContent(ThemeData theme) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    spacing: 8 * theme.scaling,
+    children: [
+      Row(
+        spacing: 8 * theme.scaling,
+        children: [
+          Icon(WifiQuickSetting._iconFromSignalStrenth(
+            widget.ap.strength,
+            _hasSecurity)),
+          Expanded(
+            child: Text(
+              widget.ap.ssid,
+              textAlign: TextAlign.start,
+              overflow: TextOverflow.ellipsis,
+              style: ButtonStyle.ghost().textStyle.call(context, {WidgetState.selected}),
+            ),
+          ),
+          if (_connecting)
+            const CircularProgressIndicator()
+          else if (_isConnected)
+            (_hovered
+                ? const Text("Disconnect")
+                : const Icon(Icons.check))
+          else if (_hovered && !_showDetails)
+            const Text("Connect"),
+        ],
+      ),
+      if (_showDetails)
+        _buildDetails(theme),
+      if (_passwordError.isNotEmpty)
+        Text(
+          _passwordError,
+          style: TextStyle(color: Colors.red),
+        ).small(),
+    ],
+  );
+
+  Widget _buildDetails(ThemeData theme) {
+    void connect() async {
+      if (await _tryConnect(_password) && mounted) {
+        setState(() {
+          _showDetails = false;
+          widget.onShowDetailsChanged?.call(false);
+        });
+      }
+    }
+
+    return Row(
+      spacing: 8 * theme.scaling,
+      children: [
+        Icon(Icons.lock),
+        Expanded(
+          child: TextField(
+            features: [
+              InputFeature.passwordToggle(
+                visibility: InputFeatureVisibility.textNotEmpty,
+                mode: PasswordPeekMode.hold,
+              ),
+            ],
+            hintText: "Password",
+            placeholder: const Text("Password"),
+            obscureText: true,
+            enableSuggestions: false,
+            autocorrect: false,
+            autofocus: true,
+            filled: true,
+            enabled: !_connecting,
+            onChanged: (v) => _password = v,
+            onSubmitted: (v) => connect(),
+          ),
+        ),
+        PrimaryButton(
+          onPressed: _connecting ? null : () => connect(),
+          child: _connecting
+              ? const CircularProgressIndicator()
+              : const Text("Connect"),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _disconnect() async {
+    if (_connecting) return;
+    final network = context.read<NetworkManagerService>();
+    final device = network.wifiDevices.firstWhere((d) => d.accessPoints.contains(widget.ap));
+    try {
+      setState(() => _connecting = true);
+      await network.disconnectWifi(device);
+    } finally {
+      if (mounted) {
+        setState(() => _connecting = false);
+      }
+    }
+  }
+
+  Future<bool> _tryConnect([String password = '']) async {
+    if (_connecting) return false;
+    final network = context.read<NetworkManagerService>();
+    final device = network.wifiDevices.firstWhere((d) => d.accessPoints.contains(widget.ap));
+    try {
+      setState(() => _connecting = true);
+      await network.connectWifi(device, widget.ap, password);
+    } on Exception {
+      if (mounted) {
+        setState(() => _passwordError = 'Invalid password'); // TODO: Better error handling
+      }
+      return false;
+    } finally {
+      if (mounted) {
+        setState(() => _connecting = false);
+      }
+    }
+    return true;
   }
 }
