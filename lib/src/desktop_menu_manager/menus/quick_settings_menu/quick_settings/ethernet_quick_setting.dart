@@ -14,10 +14,13 @@
 //  You should have received a copy of the GNU Affero General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+// ignore_for_file: avoid_function_literals_in_foreach_calls
+
 import 'package:jappeos_services/jappeos_services.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+import '../quick_setting_details_page.dart';
 import '../quick_setting_item.dart';
 import '../quick_setting_tile.dart';
 import 'quick_setting_contributor.dart';
@@ -36,7 +39,9 @@ class EthernetQuickSetting extends StatelessWidget
   @override
   Icon? createIcon(BuildContext context) {
     final network = context.watch<NetworkManagerService>();
-    return network.ethernetDevices.isNotEmpty ? const Icon(Icons.cable) : null;
+    return network.ethernetDevices.any((d) => d.isConnected)
+        ? Icon(_icon(network))
+        : null;
   }
 
   @override
@@ -44,25 +49,33 @@ class EthernetQuickSetting extends StatelessWidget
 
   @override
   Widget buildDetails(BuildContext context) {
-    return const EthernetDetailsPage();
+    final network = context.watch<NetworkManagerService>();
+    final enabled = _isEnabled(network);
+    return QuickSettingDetailsPage(
+      icon: _icon(network),
+      title: _title(network),
+      value: enabled,
+      onToggle: (_) => _toggle(network),
+      child: enabled
+          ? const _EthernetNetworkList()
+          : const Text('Ethernet is off'),
+    );
   }
 
   @override
   bool canBuild(BuildContext context) {
     final network = context.watch<NetworkManagerService>();
-    return network.ethernetDevices.isNotEmpty;
+    return network.ethernetDevices.any((d) => !d.isUnavailable);
   }
 
   @override
   Widget build(BuildContext context) {
     final network = context.watch<NetworkManagerService>();
 
-    final ethernetDevices = network.ethernetDevices;
-    if (ethernetDevices.isEmpty) {
-      throw Exception('No Ethernet devices available');
-    }
+    final ethernetDevices = network.ethernetDevices.where((d) => !d.isUnavailable);
+    assert(ethernetDevices.isNotEmpty, 'No Ethernet devices available');
 
-    final enabled = ethernetDevices.any((d) => d.isConnected);
+    final enabled = _isEnabled(network);
     String subtitle = '';
     if (enabled) {
       int i = 0;
@@ -87,30 +100,73 @@ class EthernetQuickSetting extends StatelessWidget
 
     final item = QuickSettingChipItem(
       id: id,
-      title: ethernetDevices.length == 1
-          ? 'Ethernet'
-          : 'Ethernet (${ethernetDevices.length})',
-      icon: Icons.cable,
+      title: _title(network),
+      icon: _icon(network),
       isEnabled: enabled,
       subtitle: subtitle,
       hasDetails: hasDetails,
-      onToggle: () {
-        // network.setWifiEnabled(...)
-      },
-      onOpenDetails: () {
-        QuickSettingsDetailsController.of(context).open(this);
-      },
+      onToggle: () => _toggle(network),
+      onOpenDetails: () => QuickSettingsDetailsController.of(context).open(this),
     );
 
     return QuickSettingChipTile(item: item);
   }
+
+  String _title(NetworkManagerService p) {
+    final availableDevices = p.ethernetDevices.where((d) => !d.isUnavailable).length;
+    return availableDevices == 1
+          ? 'Ethernet'
+          : 'Ethernet ($availableDevices)';
+  }
+
+  IconData _icon(NetworkManagerService _) => Icons.cable;
+
+  bool _isEnabled(NetworkManagerService p)
+      => p.ethernetDevices.any((d) => d.state == NetworkDeviceState.connected);
+
+  void _toggle(NetworkManagerService p)
+      => _isEnabled(p)
+          ? p.ethernetDevices.forEach((d) => p.setEnabled(d, false))
+          : p.ethernetDevices.forEach((d) => p.setEnabled(d, true));
 }
 
-class EthernetDetailsPage extends StatelessWidget {
-  const EthernetDetailsPage({super.key});
+class _EthernetNetworkList extends StatefulWidget {
+  const _EthernetNetworkList();
 
   @override
+  State<_EthernetNetworkList> createState() => _EthernetNetworkListState();
+}
+
+class _EthernetNetworkListState extends State<_EthernetNetworkList> {
+  @override
   Widget build(BuildContext context) {
-    return const Text("Not implemented yet");
+    final network = context.watch<NetworkManagerService>();
+    final devices = network.ethernetDevices.where((d) => !d.isUnavailable);
+    if (devices.isEmpty) {
+      return const Text('No Ethernet networks available');
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: devices.length,
+      itemBuilder: (context, index) {
+        final dev = devices.elementAt(index);
+        return GhostButton(
+          leading: Icon(Icons.cable),
+          trailing: dev.state != NetworkDeviceState.disconnected
+                 && dev.state != NetworkDeviceState.connected
+          ? const CircularProgressIndicator()
+          : Switch(
+            value: dev.state != NetworkDeviceState.disconnected,
+            onChanged: (value) => network.setEnabled(dev, value),
+          ),
+          child: Text(
+            dev.id,
+            textAlign: TextAlign.start,
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      },
+    );
   }
 }
