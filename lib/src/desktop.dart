@@ -25,12 +25,15 @@ import 'components/desktop_top_bar.dart';
 import 'components/login_screen.dart';
 import 'constants.dart';
 import 'desktop_actions.dart';
+import 'desktop_keybinds.dart';
 import 'desktop_menu_manager/desktop_menu_controller.dart';
 import 'desktop_menu_manager/desktop_menu_registry.dart';
 import 'desktop_menu_manager/menus/launcher_menu.dart';
 import 'desktop_menu_manager/menus/notification_menu.dart';
 import 'desktop_menu_manager/menus/overview_menu.dart';
 import 'desktop_menu_manager/menus/quick_settings_menu/quick_settings_menu_entry.dart';
+import 'desktop_overlay_manager/desktop_osd_layer.dart';
+import 'desktop_overlay_manager/overlays/audio_overlay.dart';
 import 'provider/auth_provider.dart';
 import 'provider/desktop_entry_provider.dart';
 
@@ -62,6 +65,10 @@ class DesktopState extends State<Desktop> {
   };
 
   final _actions = const <Type, Action<Intent>>{};
+
+  final _overlays = <Widget>[
+    AudioOverlay(),
+  ];
 
   final List<MonitorConfig> _monitors = [
     //const MonitorConfig(id: "a", bounds: Rect.fromLTWH(0,    0, 1920, 1080), margin: EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT)),
@@ -101,6 +108,7 @@ class DesktopState extends State<Desktop> {
       shortcuts: _shortcuts,
       actions: _actions,
       keybinds: _keybinds,
+      wrapBuilder: (_, p1) => DesktopKeybinds(child: p1),
       monitorLayoutBuilder: (p0, p1) {
         for (int i = 0; i < p1.length; i++) {
           final p = p1[i];
@@ -182,6 +190,7 @@ class DesktopState extends State<Desktop> {
           monitor: monitor,
         ),
       ),
+      DesktopOsdLayer(overlays: _overlays),
     ];
   }
 
