@@ -22,12 +22,19 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../provider/desktop_entry_provider.dart';
 
+enum DesktopApplicationItemState {
+  none,
+  open,
+  focused,
+}
+
 /// A basic widget that has the logo of an app and also the name below.
 class DesktopApplicationItem extends StatefulWidget {
   final bool custom;
   final Widget? customChild;
   final String? entry;
   final bool showTitle;
+  final DesktopApplicationItemState itemState;
   final double sizeFactor;
   final BorderRadiusGeometry? borderRadius;
   final void Function()? onPressed;
@@ -38,6 +45,7 @@ class DesktopApplicationItem extends StatefulWidget {
     this.customChild,
     this.entry,
     this.showTitle = true,
+    this.itemState = DesktopApplicationItemState.none,
     this.sizeFactor = 1.0,
     this.borderRadius,
     this.onPressed,
@@ -46,6 +54,7 @@ class DesktopApplicationItem extends StatefulWidget {
   factory DesktopApplicationItem.icon({
     Key? key,
     required String entry,
+    DesktopApplicationItemState itemState = DesktopApplicationItemState.none,
     double sizeFactor = 1,
     BorderRadiusGeometry? borderRadius,
     void Function()? onPressed,
@@ -54,6 +63,7 @@ class DesktopApplicationItem extends StatefulWidget {
       key: key,
       entry: entry,
       showTitle: false,
+      itemState: itemState,
       sizeFactor: sizeFactor,
       borderRadius: borderRadius,
       onPressed: onPressed,
@@ -63,6 +73,7 @@ class DesktopApplicationItem extends StatefulWidget {
   factory DesktopApplicationItem.iconWithTitle({
     Key? key,
     required String entry,
+    DesktopApplicationItemState itemState = DesktopApplicationItemState.none,
     BorderRadiusGeometry? borderRadius,
     void Function()? onPressed,
   }) {
@@ -70,6 +81,7 @@ class DesktopApplicationItem extends StatefulWidget {
       key: key,
       entry: entry,
       showTitle: true,
+      itemState: itemState,
       borderRadius: borderRadius,
       onPressed: onPressed,
     );
@@ -78,6 +90,7 @@ class DesktopApplicationItem extends StatefulWidget {
   factory DesktopApplicationItem.custom({
     Key? key,
     required Widget child,
+    DesktopApplicationItemState itemState = DesktopApplicationItemState.none,
     double sizeFactor = 1,
     BorderRadiusGeometry? borderRadius,
     void Function()? onPressed,
@@ -87,6 +100,7 @@ class DesktopApplicationItem extends StatefulWidget {
       custom: true,
       customChild: child,
       showTitle: false,
+      itemState: itemState,
       sizeFactor: sizeFactor,
       borderRadius: borderRadius,
       onPressed: onPressed,
@@ -156,71 +170,16 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
           onTap: widget.onPressed
               ?? (entry != null ? () => desktopEntryProvider.launchDesktopEntry(entry!) : null),
         );
-
-        /*return SizedBox(
-          width: _width,
-          height: _height,
-          child: RepaintBoundary(
-            child: Tooltip(
-              tooltip: (_) => TooltipContainer(child: Text(title)),
-              child: MouseRegion(
-                onEnter: (p0) => setState(() => _isHovered = true),
-                onExit: (p0) => setState(() => _isHovered = false),
-                child: GestureDetector(
-                  onTap: widget.onPressed
-                      ?? (entry != null ? () => desktopEntryProvider.launchDesktopEntry(entry!) : null),
-                  onTapDown: (p0) => setState(() => _isPressed = true),
-                  onTapUp: (_) => setState(() => _isPressed = false),
-                  onTapCancel: () => setState(() => _isPressed = false),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: _isPressed
-                          ? pressedColor
-                          : (_isHovered ? hoveredColor : null),
-                      borderRadius: widget.borderRadius ?? BorderRadius.circular(8 * theme.scaling),
-                    ),
-                    child: Padding(
-                      padding: widget.showTitle
-                          ? EdgeInsets.symmetric(vertical: 4 * theme.scaling)
-                          : EdgeInsets.zero,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        spacing: 4 * theme.scaling,
-                        children: [
-                          AnimatedScale(
-                            scale: _isPressed ? 0.7 : 1,
-                            curve: Curves.easeOut,
-                            duration: const Duration(milliseconds: 75),
-                            /*onEnd: () {
-                              if (_isPressed) setState(() => _isPressed = false);
-                            },*/
-                            child: _buildIcon(
-                              width: iconSize,
-                              height: iconSize,
-                            ),
-                          ),
-                          if (widget.showTitle) Text(
-                            title,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                          ).small(),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );*/
       },
     );
   }
 
-  Widget _buildBase({required double iconSize, String title = "Unknown", void Function()? onTap, Widget? child}) {
+  Widget _buildBase({
+    required double iconSize,
+    String title = "Unknown",
+    void Function()? onTap,
+    Widget? child,
+  }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final hoveredColor = colorScheme.primary.withValues(alpha: 0.08);
@@ -243,7 +202,10 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
                 decoration: BoxDecoration(
                   color: _isPressed
                       ? pressedColor
-                      : (_isHovered ? hoveredColor : null),
+                      : (_isHovered ||
+                         widget.itemState == DesktopApplicationItemState.focused
+                            ? hoveredColor : null
+                        ),
                   borderRadius: widget.borderRadius
                       ?? BorderRadius.circular(8 * theme.scaling),
                 ),
@@ -251,37 +213,38 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
                   padding: widget.showTitle
                       ? EdgeInsets.symmetric(vertical: 4 * theme.scaling)
                       : EdgeInsets.zero,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    spacing: 4 * theme.scaling,
-                    children: [
-                      AnimatedScale(
-                        scale: _isPressed ? 0.7 : 1,
-                        curve: Curves.easeOut,
-                        duration: const Duration(milliseconds: 75),
-                        /*onEnd: () {
-                          if (_isPressed) setState(() => _isPressed = false);
-                        },*/
-                        child: child != null
-                            ? SizedBox(
-                                width: iconSize,
-                                height: iconSize,
-                                child: child,
-                              )
-                            : _buildIcon(
+                  child: _buildMaybeIndicator(
+                    theme: theme,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      spacing: 4 * theme.scaling,
+                      children: [
+                        AnimatedScale(
+                          scale: _isPressed ? 0.7 : 1,
+                          curve: Curves.easeOut,
+                          duration: const Duration(milliseconds: 75),
+                          child: SizedBox(
+                            width: iconSize,
+                            height: iconSize,
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: child ?? _buildIcon(
                                 width: iconSize,
                                 height: iconSize,
                               ),
-                      ),
-                      if (widget.showTitle) Text(
-                        title,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                      ).small(),
-                    ],
+                            ),
+                          ),
+                        ),
+                        if (widget.showTitle) Text(
+                          title,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                        ).small(),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -313,6 +276,33 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
           child: snapshot.data!,
         );
       },
+    );
+  }
+
+  Widget _buildMaybeIndicator({
+    required ThemeData theme,
+    required Widget child,
+  }) {
+    if (widget.itemState == DesktopApplicationItemState.none) return child;
+    final isExpanded = widget.itemState == DesktopApplicationItemState.focused;
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        child,
+        Align(
+          alignment: Alignment(0.0, 0.9),
+          child: SizedBox(
+            width: isExpanded ? 27 * theme.scaling : 4 * theme.scaling,
+            height: 4 * theme.scaling,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                borderRadius: BorderRadius.circular(theme.radiusLg),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
