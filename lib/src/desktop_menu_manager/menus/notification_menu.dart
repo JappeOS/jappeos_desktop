@@ -54,7 +54,7 @@ class NotificationMenuEntry extends DesktopMenuEntry {
 }
 
 class NotificationText extends StatefulWidget {
-  const NotificationText({Key? key}) : super(key: key);
+  const NotificationText({super.key});
 
   @override
   _NotificationTextState createState() => _NotificationTextState();
@@ -92,7 +92,7 @@ class _NotificationTextState extends State<NotificationText> {
 }
 
 class NotificationMenu extends DesktopMenu {
-  NotificationMenu({Key? key}) : super(key: key);
+  NotificationMenu({super.key});
 
   @override
   _NotificationMenuState createState() => _NotificationMenuState();
