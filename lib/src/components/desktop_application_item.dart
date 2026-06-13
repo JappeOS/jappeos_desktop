@@ -17,6 +17,7 @@
 // ignore_for_file: library_private_types_in_public_api
 
 import 'package:freedesktop_desktop_entry/freedesktop_desktop_entry.dart';
+import 'package:freedesktop_desktop_entry/src/entry.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -38,6 +39,7 @@ class DesktopApplicationItem extends StatefulWidget {
   final double sizeFactor;
   final BorderRadiusGeometry? borderRadius;
   final void Function()? onPressed;
+  final void Function()? onPressedSecondary;
 
   const DesktopApplicationItem._({
     super.key,
@@ -49,6 +51,7 @@ class DesktopApplicationItem extends StatefulWidget {
     this.sizeFactor = 1.0,
     this.borderRadius,
     this.onPressed,
+    this.onPressedSecondary,
   });
 
   factory DesktopApplicationItem.icon({
@@ -58,6 +61,7 @@ class DesktopApplicationItem extends StatefulWidget {
     double sizeFactor = 1,
     BorderRadiusGeometry? borderRadius,
     void Function()? onPressed,
+    void Function()? onPressedSecondary,
   }) {
     return DesktopApplicationItem._(
       key: key,
@@ -67,6 +71,7 @@ class DesktopApplicationItem extends StatefulWidget {
       sizeFactor: sizeFactor,
       borderRadius: borderRadius,
       onPressed: onPressed,
+      onPressedSecondary: onPressedSecondary,
     );
   }
 
@@ -76,6 +81,7 @@ class DesktopApplicationItem extends StatefulWidget {
     DesktopApplicationItemState itemState = DesktopApplicationItemState.none,
     BorderRadiusGeometry? borderRadius,
     void Function()? onPressed,
+    void Function()? onPressedSecondary,
   }) {
     return DesktopApplicationItem._(
       key: key,
@@ -84,6 +90,7 @@ class DesktopApplicationItem extends StatefulWidget {
       itemState: itemState,
       borderRadius: borderRadius,
       onPressed: onPressed,
+      onPressedSecondary: onPressedSecondary,
     );
   }
 
@@ -94,6 +101,7 @@ class DesktopApplicationItem extends StatefulWidget {
     double sizeFactor = 1,
     BorderRadiusGeometry? borderRadius,
     void Function()? onPressed,
+    void Function()? onPressedSecondary,
   }) {
     return DesktopApplicationItem._(
       key: key,
@@ -104,6 +112,7 @@ class DesktopApplicationItem extends StatefulWidget {
       sizeFactor: sizeFactor,
       borderRadius: borderRadius,
       onPressed: onPressed,
+      onPressedSecondary: onPressedSecondary,
     );
   }
 
@@ -120,8 +129,7 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
   double get _width =>
       widget.showTitle ? 100 * widget.sizeFactor : 80 * widget.sizeFactor;
 
-  double? get _height =>
-      widget.showTitle ? null : 80 * widget.sizeFactor;
+  double? get _height => widget.showTitle ? null : 80 * widget.sizeFactor;
 
   @override
   void initState() {
@@ -132,18 +140,16 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    /*final colorScheme = theme.colorScheme;
-    final hoveredColor = colorScheme.primary.withValues(alpha: 0.08);
-    final pressedColor = colorScheme.primary.withValues(alpha: 0.12);*/
 
     var iconSize = _width - (4 * theme.scaling) * 1.25;
-
     if (iconSize > 60) iconSize = 60;
+    iconSize *= widget.sizeFactor;
 
     if (widget.custom) {
       return _buildBase(
         iconSize: iconSize,
         onTap: widget.onPressed,
+        onSecondaryTap: widget.onPressedSecondary,
         child: widget.customChild,
       );
     }
@@ -153,13 +159,17 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
       builder: (context, snapshot) {
         final desktopEntryProvider = context.read<DesktopEntryProvider>();
         DesktopEntry? entry;
-        if (snapshot.connectionState == ConnectionState.done
-            && snapshot.hasData
-            && snapshot.data != null) {
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.hasData &&
+            snapshot.data != null) {
           final data = snapshot.data!;
-          entry = data[widget.entry];
-          _title ??= entry?.entries[DesktopEntryKey.name.string]?.value ?? "Unknown";
-          _iconFuture ??= desktopEntryProvider.getIconWidget(entry!, size: iconSize);
+          entry = _resolveDesktopEntry(data, widget.entry);
+          _title ??=
+              entry?.entries[DesktopEntryKey.name.string]?.value ?? "Unknown";
+          if (entry != null) {
+            _iconFuture ??=
+                desktopEntryProvider.getIconWidget(entry, size: iconSize);
+          }
         }
 
         final title = _title ?? "Unknown";
@@ -167,17 +177,56 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
         return _buildBase(
           iconSize: iconSize,
           title: title,
-          onTap: widget.onPressed
-              ?? (entry != null ? () => desktopEntryProvider.launchDesktopEntry(entry!) : null),
+          onTap: widget.onPressed ??
+              (entry != null
+                  ? () => desktopEntryProvider.launchDesktopEntry(entry!)
+                  : null),
+          onSecondaryTap: widget.onPressedSecondary,
         );
       },
     );
+  }
+
+  // TODO: Move this to a more appropriate place, e.g., DesktopEntryProvider or even a utility file.
+  DesktopEntry? _resolveDesktopEntry(
+    Map<String, DesktopEntry> entries,
+    String? query,
+  ) {
+    if (query == null || query.isEmpty) {
+      return null;
+    }
+    final direct = entries[query];
+    if (direct != null) {
+      return direct;
+    }
+    final withDesktop = entries["$query.desktop"];
+    if (withDesktop != null) {
+      return withDesktop;
+    }
+
+    String normalize(String value) {
+      var result = value.trim().toLowerCase();
+      if (result.endsWith(".desktop")) {
+        result = result.substring(0, result.length - ".desktop".length);
+      }
+      return result;
+    }
+
+    final normalizedQuery = normalize(query);
+    for (final candidate in entries.entries) {
+      final normalizedKey = normalize(candidate.key);
+      if (normalizedKey == normalizedQuery) {
+        return candidate.value;
+      }
+    }
+    return null;
   }
 
   Widget _buildBase({
     required double iconSize,
     String title = "Unknown",
     void Function()? onTap,
+    void Function()? onSecondaryTap,
     Widget? child,
   }) {
     final theme = Theme.of(context);
@@ -198,16 +247,18 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
               onTapDown: (p0) => setState(() => _isPressed = true),
               onTapUp: (_) => setState(() => _isPressed = false),
               onTapCancel: () => setState(() => _isPressed = false),
+              onSecondaryTap: onSecondaryTap,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: _isPressed
                       ? pressedColor
                       : (_isHovered ||
-                         widget.itemState == DesktopApplicationItemState.focused
-                            ? hoveredColor : null
-                        ),
-                  borderRadius: widget.borderRadius
-                      ?? BorderRadius.circular(8 * theme.scaling),
+                              widget.itemState ==
+                                  DesktopApplicationItemState.focused
+                          ? hoveredColor
+                          : null),
+                  borderRadius: widget.borderRadius ??
+                      BorderRadius.circular(8 * theme.scaling),
                 ),
                 child: Padding(
                   padding: widget.showTitle
@@ -230,19 +281,21 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
                             height: iconSize,
                             child: FittedBox(
                               fit: BoxFit.contain,
-                              child: child ?? _buildIcon(
-                                width: iconSize,
-                                height: iconSize,
-                              ),
+                              child: child ??
+                                  _buildIcon(
+                                    width: iconSize,
+                                    height: iconSize,
+                                  ),
                             ),
                           ),
                         ),
-                        if (widget.showTitle) Text(
-                          title,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                        ).small(),
+                        if (widget.showTitle)
+                          Text(
+                            title,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                          ).small(),
                       ],
                     ),
                   ),
@@ -268,7 +321,9 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
     return FutureBuilder(
       future: _iconFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) return fallbackIcon;
+        if (snapshot.connectionState != ConnectionState.done) {
+          return fallbackIcon;
+        }
         if (!snapshot.hasData || snapshot.data == null) return fallbackIcon;
         return SizedBox(
           width: width,
@@ -303,6 +358,83 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class DesktopApplicationContextMenu extends StatefulWidget {
+  final String entry;
+  final Widget child;
+  final void Function()? onQuit;
+  final void Function()? onOpenDetails;
+
+  const DesktopApplicationContextMenu({
+    super.key, required this.entry,
+    required this.child,
+    this.onQuit,
+    this.onOpenDetails,
+  });
+
+  @override
+  State<DesktopApplicationContextMenu> createState()
+      => _DesktopApplicationContextMenuState();
+}
+
+class _DesktopApplicationContextMenuState extends State<DesktopApplicationContextMenu> {
+  late Future<Map<String, DesktopEntry>> _entriesFuture;
+  Map<String, Map<String, Entry>>? _actions;
+
+  @override
+  void initState() {
+    super.initState();
+    _entriesFuture = context.read<DesktopEntryProvider>().getEntries();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: _entriesFuture,
+      builder: (context, snapshot) {
+        final desktopEntryProvider = context.read<DesktopEntryProvider>();
+        DesktopEntry? entry;
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.hasData &&
+            snapshot.data != null) {
+          final data = snapshot.data!;
+          entry = data[widget.entry];
+          _actions ??= entry?.actions;
+        }
+
+        final actionItems = _actions?.entries.map((action) {
+          final name = action.value[DesktopEntryKey.name.string]?.value ?? action.key;
+          return MenuButton(
+            child: Text(name),
+            onPressed: (_) {
+              desktopEntryProvider.launchDesktopEntry(entry!, action.key);
+            },
+          );
+        }).toList() ?? [];
+
+        return ContextMenu(
+          items: [
+            if (actionItems.isNotEmpty) ... [
+              ...actionItems,
+              const MenuDivider(),
+            ],
+            if (widget.onOpenDetails != null) ... [
+              const MenuButton(
+                child: Text('Open Details'),
+              ),
+            ],
+            if (widget.onQuit != null) ... [
+              const MenuButton(
+                child: Text('Quit'),
+              ),
+            ],
+          ],
+          child: widget.child,
+        );
+      },
     );
   }
 }
