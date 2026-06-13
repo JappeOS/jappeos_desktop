@@ -34,6 +34,7 @@ class DesktopMenuController extends ChangeNotifier {
     Offset? position,
     void Function()? closeCallback,
   }) {
+    if (_currentMenu?.runtimeType == menu.runtimeType) return;
     if (_currentMenu != null) {
       closeMenu();
     }
