@@ -73,6 +73,7 @@ class DesktopTopBarNew extends StatelessWidget {
       height: DSKTP_UI_LAYER_TOPBAR_HEIGHT,
       child: DesktopBlurContainer(
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ..._createLeftSide(context),
             const Spacer(),
@@ -169,68 +170,72 @@ class _DTopbarButtonNewState extends State<DTopbarButtonNew> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final borderColor = theme.colorScheme.border;
+    return Align(
+      child: Builder(
+        builder: (context) {
+          // Use a post frame callback to ensure the widget has been laid out
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final renderBox = context.findRenderObject() as RenderBox;
+            final global = renderBox.localToGlobal(Offset.zero);
+            _globalPosition = Offset(
+              global.dx + renderBox.size.width / 2,
+              global.dy,
+            );
+          });
 
-    return Container(
-      margin: const EdgeInsets.only(left: 5, right: 5),
-      alignment: widget.alignment,
-      height: _kHeight,
-      decoration: BoxDecoration(
-        borderRadius: _borderRad,
-        color: _hovering || widget.isSelected
-            ? theme.colorScheme.secondary.scaleAlpha(theme.surfaceOpacity ?? 0)
-            : Colors.transparent,
-        border: _hovering || widget.isSelected
-            ? Border.all(width: _borderWidth, color: borderColor)
-            : Border.all(width: _borderWidth, color: Colors.transparent),
-      ),
-      child: RepaintBoundary(
-        child: Builder(
-          builder: (context) {
-            // Use a post frame callback to ensure the widget has been laid out
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              final renderBox = context.findRenderObject() as RenderBox;
-              final global = renderBox.localToGlobal(Offset.zero);
-              _globalPosition = Offset(
-                global.dx + renderBox.size.width / 2,
-                global.dy,
-              );
-            });
-
-            return MouseRegion(
-              onEnter: (value) => setState(() {
-                _hovering = true;
-              }),
-              onExit: (value) => setState(() {
-                _hovering = false;
-              }),
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  widget.onPressed?.call(_globalPosition);
-                },
-                child: SizedBox(
-                  height: _kHeight,
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: 6 * theme.scaling,
-                      right: 6 * theme.scaling,
-                    ),
-                    child: IconTheme(
-                      data: IconTheme.of(context).copyWith(size: _kIconSize),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        spacing: 6 * theme.scaling,
-                        children: widget.children,
-                      ),
+          return MouseRegion(
+            onEnter: (value) => setState(() {
+              _hovering = true;
+            }),
+            onExit: (value) => setState(() {
+              _hovering = false;
+            }),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                widget.onPressed?.call(_globalPosition);
+              },
+              child: _buildContainer(
+                theme,
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 6 * theme.scaling,
+                  ),
+                  child: IconTheme(
+                    data: IconTheme.of(context).copyWith(size: _kIconSize),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: 6 * theme.scaling,
+                      children: widget.children,
                     ),
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
+
+  Widget _buildContainer(ThemeData theme, Widget child) => Padding(
+    padding: EdgeInsets.symmetric(horizontal: 6 * theme.scaling),
+    child: Center(
+      child: SizedBox(
+        height: _kHeight,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: _borderRad,
+            color: _hovering || widget.isSelected
+                ? theme.colorScheme.secondary.scaleAlpha(theme.surfaceOpacity ?? 0)
+                : Colors.transparent,
+            border: _hovering || widget.isSelected
+                ? Border.all(width: _borderWidth, color: theme.colorScheme.border)
+                : Border.all(width: _borderWidth, color: Colors.transparent),
+          ),
+          child: child,
+        ),
+      ),
+    ),
+  );
 }
