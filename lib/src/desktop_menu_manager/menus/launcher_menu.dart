@@ -101,7 +101,7 @@ class _LauncherMenuState extends State<LauncherMenu> {
   void initState() {
     super.initState();
 
-    _searchFocus = FocusNode();
+    _searchFocus = FocusNode()..requestFocus();
     _controller = TextEditingController();
     _entriesFuture = context.read<DesktopEntryProvider>().getEntries();
     _entries = [];
@@ -195,7 +195,6 @@ class _LauncherMenuState extends State<LauncherMenu> {
                 features: [InputFeature.leading(Icon(Icons.search))],
                 keyboardType: TextInputType.text,
                 placeholder: Text('Search Files, Apps & More'),
-                autofocus: true,
                 filled: false,
                 decoration: BoxDecoration(
                   border: null,
