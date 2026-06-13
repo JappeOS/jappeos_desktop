@@ -250,6 +250,7 @@ class _WifiNetworkListState extends State<_WifiNetworkList> {
         return _WifiNetworkItem(
           key: ValueKey(ap.path),
           ap: ap,
+          showDetails: _shownDetails.contains(ap.path),
           onShowDetailsChanged: (show) {
             setState(() {
               if (show) {
@@ -313,17 +314,23 @@ class _WifiNetworkListState extends State<_WifiNetworkList> {
 
 class _WifiNetworkItem extends StatefulWidget {
   final WifiAccessPoint ap;
+  final bool showDetails;
   final void Function(bool)? onShowDetailsChanged;
 
-  const _WifiNetworkItem({super.key, required this.ap, this.onShowDetailsChanged});
+  const _WifiNetworkItem({
+    super.key,
+    required this.ap,
+    this.showDetails = false,
+    this.onShowDetailsChanged,
+  });
 
   @override
   State<_WifiNetworkItem> createState() => _WifiNetworkItemState();
 }
 
 class _WifiNetworkItemState extends State<_WifiNetworkItem> {
+  final FocusNode _focusNode = FocusNode();
   bool _hovered = false;
-  bool _showDetails = false;
   bool _connecting = false;
   String _password = '';
   String _passwordError = '';
@@ -332,10 +339,14 @@ class _WifiNetworkItemState extends State<_WifiNetworkItem> {
   bool get _isConnected => widget.ap.connected;
 
   @override
+  void initState() {
+    super.initState();
+    _focusNode.requestFocus();
+  }
+
+  @override
   void dispose() {
-    if (_showDetails) {
-      widget.onShowDetailsChanged?.call(false);
-    }
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -345,20 +356,18 @@ class _WifiNetworkItemState extends State<_WifiNetworkItem> {
     return _buildBase(
       onPressed: () async {
         if (_connecting) return;
-        if (!_showDetails && _isConnected) {
+        if (!widget.showDetails && _isConnected) {
           await _disconnect();
           return;
         }
-        if (!_showDetails && !await _tryConnect() && mounted) {
+        if (!widget.showDetails && !await _tryConnect() && mounted) {
           setState(() {
             _passwordError = '';
-            _showDetails = true;
             widget.onShowDetailsChanged?.call(true);
           });
         }
       },
       onTapOutside: () => setState(() {
-        _showDetails = false;
         widget.onShowDetailsChanged?.call(false);
       }),
       onHover: (v) => setState(() => _hovered = v),
@@ -377,14 +386,14 @@ class _WifiNetworkItemState extends State<_WifiNetworkItem> {
     bool hasHover = false,
   }) => TapRegion(
     onTapOutside: (_) => onTapOutside?.call(),
-    onTapInside: _showDetails ? (_) => onPressed?.call() : null,
+    onTapInside: widget.showDetails ? (_) => onPressed?.call() : null,
     behavior: HitTestBehavior.translucent,
     child: MouseRegion(
       onEnter: (_) => onHover?.call(true),
       onExit: (_) => onHover?.call(false),
       opaque: false,
       hitTestBehavior: HitTestBehavior.translucent,
-      child: _showDetails
+      child: widget.showDetails
       ? Padding(
         padding: EdgeInsets.symmetric(vertical: 4 * theme.scaling),
         child: Card(
@@ -427,17 +436,17 @@ class _WifiNetworkItemState extends State<_WifiNetworkItem> {
             (_hovered
                 ? const Text("Disconnect")
                 : const Icon(Icons.check))
-          else if (_hovered && !_showDetails)
+          else if (_hovered && !widget.showDetails)
             const Text("Connect"),
         ],
       ),
-      if (_showDetails)
+      if (widget.showDetails)
         _buildDetails(theme),
       if (_passwordError.isNotEmpty)
         Text(
           _passwordError,
-          style: TextStyle(color: Colors.red),
-        ).small(),
+          style: theme.typography.small.copyWith(color: Colors.red),
+        ),
     ],
   );
 
@@ -445,7 +454,6 @@ class _WifiNetworkItemState extends State<_WifiNetworkItem> {
     void connect() async {
       if (await _tryConnect(_password) && mounted) {
         setState(() {
-          _showDetails = false;
           widget.onShowDetailsChanged?.call(false);
         });
       }
@@ -457,6 +465,7 @@ class _WifiNetworkItemState extends State<_WifiNetworkItem> {
         Icon(Icons.lock),
         Expanded(
           child: TextField(
+            focusNode: _focusNode,
             features: [
               InputFeature.passwordToggle(
                 visibility: InputFeatureVisibility.textNotEmpty,
@@ -468,7 +477,6 @@ class _WifiNetworkItemState extends State<_WifiNetworkItem> {
             obscureText: true,
             enableSuggestions: false,
             autocorrect: false,
-            autofocus: true,
             filled: true,
             enabled: !_connecting,
             onChanged: (v) => _password = v,
