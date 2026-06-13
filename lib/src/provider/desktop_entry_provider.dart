@@ -34,7 +34,7 @@ class DesktopEntryProvider extends ChangeNotifier {
       try {
         await _reloadEntries();
       } catch (e) {
-        // Handle errors, e.g., log them
+        // TODO: Handle errors, e.g., log them
       }
       _isDirty = false;
     }
@@ -77,12 +77,37 @@ class DesktopEntryProvider extends ChangeNotifier {
     );
   }
 
-  Future<bool> launchDesktopEntry(DesktopEntry desktopEntry) async {
-    String? exec = desktopEntry.entries[DesktopEntryKey.exec.string]?.value;
+  Future<bool> launchDesktopEntry(
+    DesktopEntry desktopEntry,
+    [String action = ""]
+  ) async {
+    final baseEntries = desktopEntry.entries;
+    final actionEntries = desktopEntry.actions[action];
+
+    String? exec;
+    bool? terminal;
+
+    if (action.isNotEmpty) {
+      if (actionEntries == null) {
+        return false;
+      }
+
+      final String? aexec = actionEntries[DesktopEntryKey.exec.string]?.value;
+      if (aexec != null) {
+        exec = aexec;
+      }
+
+      final bool? aterminal = actionEntries[DesktopEntryKey.terminal.string]?.value.getBoolean();
+      if (aterminal != null) {
+        terminal = aterminal;
+      }
+    }
+
+    exec ??= baseEntries[DesktopEntryKey.exec.string]?.value;
     if (exec == null) {
       return false;
     }
-    final bool terminal = desktopEntry.entries[DesktopEntryKey.terminal.string]?.value.getBoolean() ?? false;
+    terminal ??= baseEntries[DesktopEntryKey.terminal.string]?.value.getBoolean() ?? false;
     return _launchApplication(command: exec, terminal: terminal);
   }
 
