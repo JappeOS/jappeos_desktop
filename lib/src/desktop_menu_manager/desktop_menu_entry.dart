@@ -21,6 +21,7 @@ import 'desktop_menu_controller.dart';
 enum DesktopMenuEntryType {
   launcher,
   tray,
+  none,
 }
 
 abstract class DesktopMenuEntry extends ChangeNotifier {
