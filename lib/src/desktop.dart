@@ -21,6 +21,7 @@ import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'components/desktop_dock.dart';
+import 'components/desktop_notifications.dart';
 import 'components/desktop_top_bar.dart';
 import 'components/login_screen.dart';
 import 'constants.dart';
@@ -32,8 +33,10 @@ import 'desktop_menu_manager/menus/launcher_menu.dart';
 import 'desktop_menu_manager/menus/notification_menu.dart';
 import 'desktop_menu_manager/menus/overview_menu.dart';
 import 'desktop_menu_manager/menus/quick_settings_menu/quick_settings_menu_entry.dart';
+import 'desktop_menu_manager/menus/switcher_menu.dart';
 import 'desktop_overlay_manager/desktop_osd_layer.dart';
-import 'desktop_overlay_manager/overlays/audio_overlay.dart';
+import 'desktop_overlay_manager/overlays/audio_input_overlay.dart';
+import 'desktop_overlay_manager/overlays/audio_output_overlay.dart';
 import 'provider/auth_provider.dart';
 import 'provider/desktop_entry_provider.dart';
 
@@ -50,10 +53,9 @@ class Desktop extends StatefulWidget {
 ///
 /// See [WmController] for more information on the windowing system.
 class DesktopState extends State<Desktop> {
-  static final GlobalKey<WindowManagerState> _wmControllerKey
-      = GlobalKey<WindowManagerState>();
-  static WindowManagerState? getWmController()
-      => _wmControllerKey.currentState;
+  static final GlobalKey<WindowManagerState> _wmControllerKey =
+      GlobalKey<WindowManagerState>();
+  static WindowManagerState? getWmController() => _wmControllerKey.currentState;
 
   late final DesktopMenuController _menuController;
   final DesktopMenuRegistry _menuRegistry = DesktopMenuRegistry();
@@ -67,13 +69,8 @@ class DesktopState extends State<Desktop> {
   final _actions = const <Type, Action<Intent>>{};
 
   final _overlays = <Widget>[
-    AudioOverlay(),
-  ];
-
-  final List<MonitorConfig> _monitors = [
-    //const MonitorConfig(id: "a", bounds: Rect.fromLTWH(0,    0, 1920, 1080), margin: EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT)),
-    //const MonitorConfig(id: "b", bounds: Rect.fromLTWH(1920, 0, 1920, 1080)),
-    //const MonitorConfig(id: "c", bounds: Rect.fromLTWH(0,   540, 960, 540)),
+    AudioInputOverlay(),
+    AudioOutputOverlay(),
   ];
 
   @override
@@ -84,6 +81,7 @@ class DesktopState extends State<Desktop> {
     _menuRegistry.register(OverviewMenuEntry());
     _menuRegistry.register(QuickSettingsMenuEntry());
     _menuRegistry.register(NotificationMenuEntry());
+    _menuRegistry.register(SwitcherMenuEntry());
     _keybinds = GlobalKeybindService();
   }
 
@@ -101,14 +99,19 @@ class DesktopState extends State<Desktop> {
       wmKey: _wmControllerKey,
       providers: [
         ListenableProvider<AuthProvider>(create: (_) => AuthProvider()),
-        ListenableProvider<DesktopEntryProvider>(create: (_) => DesktopEntryProvider(), lazy: false),
+        ListenableProvider<DesktopEntryProvider>(
+            create: (_) => DesktopEntryProvider(), lazy: false),
       ],
       theme: _getTheme(false),
       darkTheme: _getTheme(true),
       shortcuts: _shortcuts,
       actions: _actions,
       keybinds: _keybinds,
-      wrapBuilder: (_, p1) => DesktopKeybinds(child: p1),
+      wrapBuilder: (_, p1) => DesktopKeybinds(
+        registry: _menuRegistry,
+        menuController: _menuController,
+        child: p1,
+      ),
       monitorLayoutBuilder: (p0, p1) {
         for (int i = 0; i < p1.length; i++) {
           final p = p1[i];
@@ -141,24 +144,24 @@ class DesktopState extends State<Desktop> {
           );
         },
       ),
-      monitorOverlayBuilder: (context, monitor) =>
-        monitor.isPrimary
-            ? Consumer<AuthProvider>(
-        builder: (context, auth, _) => Stack(
-          children: _buildDesktopOverlayLayers(context, auth, monitor),
-        ),
-      ) : const SizedBox.shrink(),
+      monitorOverlayBuilder: (context, monitor) => monitor.isPrimary
+          ? Consumer<AuthProvider>(
+              builder: (context, auth, _) => Stack(
+                children: _buildDesktopOverlayLayers(context, auth, monitor),
+              ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 
   ThemeData _getTheme(bool dark) => ThemeData(
-    colorScheme: dark
-        ? ColorSchemes.darkDefaultColor
-        : ColorSchemes.lightDefaultColor,
-    radius: 0.9,
-    surfaceOpacity: 0.85,
-    surfaceBlur: 9,
-  );
+        colorScheme: dark
+            ? ColorSchemes.darkDefaultColor
+            : ColorSchemes.lightDefaultColor,
+        radius: 0.9,
+        surfaceOpacity: 0.85,
+        surfaceBlur: 9,
+      );
 
   List<MenuItem> _buildContextMenuItems() {
     return [
@@ -183,6 +186,7 @@ class DesktopState extends State<Desktop> {
         _buildDock(),
         _buildTopBar(),
       ],
+      DesktopNotificationArea(),
       Positioned.fill(
         top: DSKTP_UI_LAYER_TOPBAR_HEIGHT,
         child: DesktopMenuWidget(
@@ -210,23 +214,6 @@ class DesktopState extends State<Desktop> {
     return DesktopDock(
       registry: _menuRegistry,
       menuController: _menuController,
-      hasWindowIntersection: false,
-      items: [
-        /*(
-          SvgPicture.asset(
-            "resources/images/_icontheme/Default/apps/development-appmaker.svg"
-          ),
-          "App Maker",
-          () {}
-        ),
-        (
-          SvgPicture.asset(
-            "resources/images/_icontheme/Default/apps/accessories-calculator.svg"
-          ),
-          "Calculator",
-          () {}
-        ),*/
-      ],
     );
   }
 
