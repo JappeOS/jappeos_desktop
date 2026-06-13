@@ -21,24 +21,22 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../quick_setting_details_page.dart';
 import '../quick_setting_item.dart';
 import '../quick_setting_tile.dart';
+import 'audio_quick_setting_util.dart';
 import 'quick_setting_contributor.dart';
 import 'quick_settings_details_controller.dart';
 
-class AudioQuickSetting extends StatelessWidget
+class AudioInputQuickSetting extends StatelessWidget
     implements QuickSettingContributor {
-  const AudioQuickSetting({super.key});
+  const AudioInputQuickSetting({super.key});
 
   @override
-  String get id => 'audio';
+  String get id => 'audio_input';
 
   @override
   QuickSettingContributorType get type => QuickSettingContributorType.slider;
 
   @override
-  Icon? createIcon(BuildContext context) {
-    final audio = context.watch<AudioService>();
-    return audio.activeOutputDevice != null ? Icon(_icon(audio)) : null;
-  }
+  Icon? createIcon(BuildContext context) => null;
 
   @override
   bool get hasDetails => true;
@@ -56,69 +54,55 @@ class AudioQuickSetting extends StatelessWidget
   @override
   bool canBuild(BuildContext context) {
     final audio = context.watch<AudioService>();
-    return audio.devices.any((d) => d.direction == AudioDirection.output);
+    return audio.devices.any((d) => d.direction == AudioDirection.input);
   }
 
   @override
   Widget build(BuildContext context) {
     final audio = context.watch<AudioService>();
-    final activeOutput = audio.activeOutputDevice;
+    final activeInput = audio.activeInputDevice;
 
     final item = QuickSettingSliderItem(
       id: id,
       icon: _icon(audio),
-      value: activeOutput?.volume ?? 0,
+      value: activeInput?.volume ?? 0,
       hasDetails: hasDetails,
-      onChanged: activeOutput == null
+      onChanged: activeInput == null
           ? null
-          : (p0) => audio.setDeviceVolume(activeOutput, p0),
-      onIconTap: activeOutput == null
+          : (p0) => audio.setDeviceVolume(activeInput, p0),
+      onIconTap: activeInput == null
           ? null
-          : () => audio.setDeviceMuted(activeOutput, !activeOutput.muted),
+          : () => audio.setDeviceMuted(activeInput, !activeInput.muted),
       onOpenDetails: () => QuickSettingsDetailsController.of(context).open(this),
     );
 
     return QuickSettingSliderTile(item: item);
   }
 
-  String _title() => "Audio Output";
+  String _title() => "Audio Input";
 
   IconData _icon(AudioService audio) {
-    final device = audio.activeOutputDevice;
+    final device = audio.activeInputDevice;
     if (device == null) {
-      return _iconFromVolume(0, true);
+      return _iconFromMutedState(true);
     }
 
-    return _iconFromVolume(device.volume, device.muted);
+    return _iconFromMutedState(device.muted);
   }
 
-  static IconData _iconFromVolume(double volume, [bool muted = false]) {
-    if (muted) return Icons.volume_off;
-
-    if (volume >= 0.5) {
-      return Icons.volume_up;
-    } else if (volume > 0) {
-      return Icons.volume_down;
-    } else {
-      return Icons.volume_mute;
-    }
-  }
+  static IconData _iconFromMutedState([bool muted = false])
+      => muted ? Icons.mic_off : Icons.mic;
 }
 
-class _AudioSettings extends StatefulWidget {
+class _AudioSettings extends StatelessWidget {
   const _AudioSettings();
 
   @override
-  State<_AudioSettings> createState() => _AudioSettingsState();
-}
-
-class _AudioSettingsState extends State<_AudioSettings> {
-  @override
   Widget build(BuildContext context) {
     final audio = context.watch<AudioService>();
-    final devices = audio.devices.where((d) => d.direction == AudioDirection.output);
+    final devices = audio.devices.where((d) => d.direction == AudioDirection.input);
     if (devices.isEmpty) {
-      return const Text('No audio output devices available');
+      return const Text('No audio input devices available');
     }
     return ListView.builder(
       shrinkWrap: true,
@@ -134,27 +118,22 @@ class _AudioSettingsState extends State<_AudioSettings> {
   }
 }
 
-class _AudioDeviceItem extends StatefulWidget {
+class _AudioDeviceItem extends StatelessWidget {
   final AudioDevice device;
 
   const _AudioDeviceItem({super.key, required this.device});
 
   @override
-  State<_AudioDeviceItem> createState() => _AudioDeviceItemState();
-}
-
-class _AudioDeviceItemState extends State<_AudioDeviceItem> {
-  @override
   Widget build(BuildContext context) {
     final audio = context.watch<AudioService>();
-    assert(widget.device.direction == AudioDirection.output);
+    assert(device.direction == AudioDirection.input);
     return GhostButton(
-      onPressed: () => audio.setActiveOutputDevice(widget.device),
-      leading: Icon(Icons.speaker),
-      trailing: widget.device == audio.activeOutputDevice
+      onPressed: () => audio.setActiveInputDevice(device),
+      leading: Icon(createIcon(device.type)),
+      trailing: device == audio.activeInputDevice
           ? Icon(Icons.check)
           : null,
-      child: Text(widget.device.name).ellipsis(),
+      child: Text(device.name).ellipsis(),
     );
   }
 }

@@ -20,15 +20,15 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../osd_overlay_mixin.dart';
 import '../osd_panel.dart';
 
-class AudioOverlay extends StatefulWidget {
-  const AudioOverlay({super.key});
+class AudioInputOverlay extends StatefulWidget {
+  const AudioInputOverlay({super.key});
 
   @override
-  State<AudioOverlay> createState() => _AudioOverlayState();
+  State<AudioInputOverlay> createState() => _AudioInputOverlayState();
 }
 
-class _AudioOverlayState extends State<AudioOverlay>
-    with OsdOverlayMixin<AudioOverlay> {
+class _AudioInputOverlayState extends State<AudioInputOverlay>
+    with OsdOverlayMixin<AudioInputOverlay> {
 
   @override
   List<Listenable> get listenables {
@@ -38,16 +38,14 @@ class _AudioOverlayState extends State<AudioOverlay>
   @override
   OsdData? buildOsdData() {
     final audio = context.read<AudioService>();
-    final activeDevice = audio.activeOutputDevice;
+    final activeDevice = audio.activeInputDevice;
     if (activeDevice == null) return null;
     final volume = activeDevice.volume;
     final muted = activeDevice.muted;
 
     final icon = muted || volume <= 0
-        ? Icons.volume_off
-        : volume < 0.5
-            ? Icons.volume_down
-            : Icons.volume_up;
+        ? Icons.mic_off
+        : Icons.mic;
 
     return OsdBarData(
       label: 'Volume',

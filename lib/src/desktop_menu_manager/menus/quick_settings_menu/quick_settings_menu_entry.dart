@@ -19,10 +19,11 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../../desktop_menu_controller.dart';
 import '../../desktop_menu_entry.dart';
+import 'quick_settings/audio_input_quick_setting.dart';
 import 'quick_settings/battery_quick_setting.dart';
 import 'quick_settings/bluetooth_quick_setting.dart';
 import 'quick_settings_menu.dart';
-import 'quick_settings/audio_quick_setting.dart';
+import 'quick_settings/audio_output_quick_setting.dart';
 import 'quick_settings/brightness_quick_setting.dart';
 import 'quick_settings/ethernet_quick_setting.dart';
 import 'quick_settings/quick_setting_contributor.dart';
@@ -32,7 +33,8 @@ import 'quick_settings/wifi_quick_setting.dart';
 class QuickSettingsMenuEntry extends DesktopMenuEntry {
   final List<QuickSettingContributor> qsContributors = [
     const BatteryQuickSetting(),
-    const AudioQuickSetting(),
+    const AudioOutputQuickSetting(),
+    const AudioInputQuickSetting(),
     const WifiQuickSetting(),
     const EthernetQuickSetting(),
     const BluetoothQuickSetting(),
