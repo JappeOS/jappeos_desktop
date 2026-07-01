@@ -227,7 +227,7 @@ debug_bundle: flutter_debug $(DEBUG_BUNDLE_DIR)/$(TARGET_EXEC)
 	mkdir -p $(DEBUG_BUNDLE_DIR)/lib/
 	cp $(DEPS_DIR)/libflutter_engine_debug.so $(DEBUG_BUNDLE_DIR)/lib/libflutter_engine.so
 	if [ -d build/linux/$(ARCH)/debug/bundle/data ]; then cp -r build/linux/$(ARCH)/debug/bundle/data $(DEBUG_BUNDLE_DIR); else cp -r build/flutter_assets $(DEBUG_BUNDLE_DIR)/data; fi
-	cp lsan_suppressions.txt $(DEBUG_BUNDLE_DIR)
+#cp lsan_suppressions.txt $(DEBUG_BUNDLE_DIR)
 
 profile_bundle: flutter_profile $(PROFILE_BUNDLE_DIR)/$(TARGET_EXEC)
 	mkdir -p $(PROFILE_BUNDLE_DIR)/lib/
@@ -245,7 +245,7 @@ debug_bundle_no_flutter: $(DEBUG_BUNDLE_DIR)/$(TARGET_EXEC)
 	mkdir -p $(DEBUG_BUNDLE_DIR)/lib/
 	cp $(DEPS_DIR)/libflutter_engine_debug.so $(DEBUG_BUNDLE_DIR)/lib/libflutter_engine.so
 	if [ -d build/linux/$(ARCH)/debug/bundle/data ]; then cp -r build/linux/$(ARCH)/debug/bundle/data $(DEBUG_BUNDLE_DIR); else cp -r build/flutter_assets $(DEBUG_BUNDLE_DIR)/data; fi
-	cp lsan_suppressions.txt $(DEBUG_BUNDLE_DIR)
+#cp lsan_suppressions.txt $(DEBUG_BUNDLE_DIR)
 
 profile_bundle_no_flutter: $(PROFILE_BUNDLE_DIR)/$(TARGET_EXEC)
 	mkdir -p $(PROFILE_BUNDLE_DIR)/lib/

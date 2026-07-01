@@ -16,27 +16,29 @@
 
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:freedesktop_desktop_entry/freedesktop_desktop_entry.dart';
 
 class DesktopEntryProvider extends ChangeNotifier {
-  final _themes = FreedesktopIconThemes();
+  late Future<FreedesktopIconTheme> _themeLoadingFuture;
   Map<String, DesktopEntry> _entries = {};
   bool _isDirty = true;
+  bool _entriesReloading = false;
 
   DesktopEntryProvider() {
-    _themes.loadThemes();
+    _themeLoadingFuture = _loadThemes();
   }
 
   Future<Map<String, DesktopEntry>> getEntries() async {
     if (_isDirty) {
+      _isDirty = false;
       try {
         await _reloadEntries();
       } catch (e) {
         // TODO: Handle errors, e.g., log them
       }
-      _isDirty = false;
     }
     return _entries;
   }
@@ -44,12 +46,12 @@ class DesktopEntryProvider extends ChangeNotifier {
   Future<File?> getIcon(DesktopEntry entry) async {
     String? icon = entry.entries[DesktopEntryKey.icon.string]?.value;
     if (icon == null) return null;
-    return _themes.findIcon(
+    return (await _themeLoadingFuture).findIcon(
       IconQuery(
         name: icon,
         size: 64,
         extensions: ['png', 'svg'],
-        preferredThemes: ['Papirus', 'Papirus-Dark', 'Papirus-Light'],
+        //preferredThemes: ['Papirus', 'Papirus-Dark', 'Papirus-Light'],
       ),
     );
   }
@@ -132,9 +134,27 @@ class DesktopEntryProvider extends ChangeNotifier {
     }
   }
 
+  Future<FreedesktopIconTheme> _loadThemes() async {
+    final themeList = await FreedesktopIconTheme.installedThemes;
+    const preferredThemes = ['Papirus-Dark', 'Papirus-Light', 'Papirus'];
+
+    final selectedTheme = preferredThemes.firstWhereOrNull(themeList.contains) ??
+        themeList.firstOrNull;
+
+    return await FreedesktopIconTheme.loadTheme(theme: selectedTheme ?? "");
+  }
+
   Future<void> _reloadEntries() async {
-    final entries = await parseAllInstalledDesktopFiles();
-    _entries = entries;
-    notifyListeners();
+    if (_entriesReloading) {
+      return;
+    }
+    _entriesReloading = true;
+    try {
+      final entries = await parseAllInstalledDesktopFiles();
+      _entries = entries;
+      notifyListeners();
+    } finally {
+      _entriesReloading = false;
+    }
   }
 }

@@ -35,6 +35,11 @@ dependencies:
     git:
       url: https://github.com/JappeOS/jappeos_services.git
       ref: dev
+
+  freedesktop_desktop_entry:
+    git:
+      url: https://github.com/JappeOS/freedesktop_desktop_entry.git
+      ref: master
   #jappeos_services:
   #  path: ../jappeos_services
 
@@ -48,7 +53,6 @@ dependencies:
   args: ^2.5.0
   intl: ^0.20.2
   widget_and_text_animator: ^1.1.5
-  freedesktop_desktop_entry: ^0.6.1
   collection: ^1.19.1
   material_symbols_icons: ^4.2906.0
   fuzzywuzzy: ^1.2.0
