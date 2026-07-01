@@ -18,10 +18,8 @@
 
 import 'dart:async';
 
-import 'package:jappeos_desktop/src/provider/desktop_entry_provider.dart';
 import 'package:jdwm/jdwm.dart';
 import 'package:jappeos_desktop/src/desktop_menu_manager/menus/launcher_menu.dart';
-import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../desktop_menu_manager/desktop_menu_controller.dart';

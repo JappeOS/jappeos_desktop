@@ -16,8 +16,6 @@
 
 // ignore_for_file: avoid_function_literals_in_foreach_calls
 
-import 'package:jappeos_services/jappeos_services.dart';
-import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../quick_setting_details_page.dart';
