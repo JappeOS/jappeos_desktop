@@ -22,6 +22,9 @@
 
 The desktop environment for JappeOS. Written in Flutter.
 
+![Screenshot](.github/assets/desktop_ui1.png)
+_Screenshot might be outdated!_
+
 ## Features
 
 * Window manager via `jappeos_desktop_base` and `JDWM`
@@ -62,44 +65,20 @@ $ flutter pub get
 
 #### Linux
 
-```bash
-$ flutter build linux
-```
+**Read build instructions at the end of this file:** https://github.com/JappeOS/jdwm/blob/main/_integration_kit/DEPENDENCY_README.md
 
-This produces a binary in:
-```
-build/linux/x64/release/bundle/
-```
-
-Run locally:
-```bash
-$ flutter run -d linux
-```
+> [!IMPORTANT]
+> JDWM is already a dependecy of this project. You might still need to install wlroots and the correct version of Flutter into the `vendor/*` directory.
+> After that, you should be ready to build.
 
 #### Other platforms
 
-While running on Linux is recommended, you can still build and run on other platforms.
-Just use the above instructions, and replace `linux` with the platform name (e.g. `windows` or `macos`).
-
-#### Build Modes
-
-* `debug` - default for development
-* `profile` - performance testing
-* `release` - production build
-
-Example:
-```bash
-$ flutter build linux --release
-```
+The JDWM compositor is not supposed to work on other platforms than Linux. Support or usability for other platforms cannot be guaranteed.
 
 #### Troubleshooting
 
-If the build fails after dependency changes:
-```bash
-$ flutter clean
-$ flutter pub get
-```
-Check `flutter doctor` for missing desktop dependencies.
+If the build fails after dependency changes or Docker image deletion, simply run `./run_build.sh build-image` as instructed in the `DEPENDENCY_README.md` file linked above.
+If the JDWM native code is modified, a clean build is required. Simply update the JDWM GIT submodule to update JDWM, then run a clean build, as instructed in `DEPENDENCY_README.md`.
 
 ## Contributing
 
