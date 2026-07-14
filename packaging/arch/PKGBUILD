@@ -1,11 +1,12 @@
 # Maintainer: JappeOS
 
 pkgname=jappeos_desktop
-pkgver=0.1.0
+pkgver=0.0.1
+_tag=dev-v0.0.1
 pkgrel=1
 pkgdesc='JappeOS desktop shell built with Flutter and JDWM'
 arch=('x86_64')
-url='https://github.com/JappeOS/jappeos_desktop'
+url="https://github.com/JappeOS/$pkgname"
 license=('GPL-3.0-or-later')
 depends=(
   'fontconfig'
@@ -47,14 +48,17 @@ makedepends=(
 provides=('jappeos-desktop')
 conflicts=('jappeos-desktop')
 options=('!strip')
-source=()
-sha256sums=()
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/$_tag.tar.gz")
+sha256sums=('SKIP')
 
 _appname='jappeos_desktop'
 _pkgroot='usr/lib/jappeos_desktop'
+_srcroot="${pkgname}-${_tag}"
 
 _repo_root() {
-  if [[ -f "${startdir}/run_build.sh" ]]; then
+  if [[ -f "${srcdir}/${_srcroot}/run_build.sh" ]]; then
+    printf '%s\n' "${srcdir}/${_srcroot}"
+  elif [[ -f "${startdir}/run_build.sh" ]]; then
     printf '%s\n' "${startdir}"
   elif [[ -f "${startdir}/../../run_build.sh" ]]; then
     cd "${startdir}/../.." && pwd
@@ -66,6 +70,9 @@ _repo_root() {
 
 build() {
   cd "$(_repo_root)"
+  if [[ -z "${FLUTTER_BIN:-}" && -x /opt/flutter/bin/flutter ]]; then
+    export FLUTTER_BIN=/opt/flutter/bin/flutter
+  fi
   ./run_build.sh arch-native release
 }
 

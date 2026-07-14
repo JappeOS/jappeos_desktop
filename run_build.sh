@@ -133,6 +133,8 @@ configure_arch_native() {
 
   if [[ "${FLUTTER_BIN}" == "${SCRIPT_DIR}/vendor/flutter_clone/bin/flutter" ]] && command -v flutter >/dev/null 2>&1; then
     FLUTTER_BIN="$(command -v flutter)"
+  elif [[ "${FLUTTER_BIN}" == "${SCRIPT_DIR}/vendor/flutter_clone/bin/flutter" ]] && [[ -x /opt/flutter/bin/flutter ]]; then
+    FLUTTER_BIN="/opt/flutter/bin/flutter"
   fi
 }
 

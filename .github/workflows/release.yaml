@@ -1,0 +1,25 @@
+name: Release
+
+on:
+  push:
+    branches: ["dev", "testing", "stable"]
+    paths:
+      - "pubspec.yaml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: JappeOS/jappeos-workflows/.github/workflows/release-flutter.yml@main
+    secrets: inherit
+  build:
+    needs: release
+    uses: JappeOS/jappeos-workflows/.github/workflows/build-package.yml@main
+    with:
+      package-name: jappeos-desktop
+      flutter: true
+      flutter-version: 3.32.8
+      channel: ${{ github.ref_name }}
+      commit-sha: ${{ needs.release.outputs.commit-sha }}
+    secrets: inherit

@@ -28,6 +28,11 @@ Docker builder/runtime images. Ubuntu development builds still use the existing
 commands such as `./run_build.sh release`, `./run_build.sh fast`, and
 `./run_build.sh --run`.
 
+Do not commit `vendor/flutter_clone`. For native package builds, provide Flutter
+through `PATH`, `FLUTTER_BIN`, or `/opt/flutter/bin/flutter`. The ignored
+`vendor/flutter_clone` tree remains for the existing Docker build path, where the
+Dockerfile copies that local SDK into the image.
+
 The package installs the desktop bundle under `/usr/lib/jappeos_desktop` and
 provides `/usr/bin/jappeos_desktop`.
 
