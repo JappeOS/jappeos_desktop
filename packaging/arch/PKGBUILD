@@ -10,7 +10,6 @@ url="https://github.com/JappeOS/$pkgname"
 license=('GPL-3.0-or-later')
 depends=(
   'fontconfig'
-  'jdwm'
   'libc++'
   'libc++abi'
   'libdisplay-info'
@@ -32,6 +31,9 @@ depends=(
   'xcb-util-renderutil'
   'xcb-util-wm'
   'xorg-xwayland'
+)
+optdepends=(
+  'jdwm: shared JappeOS compositor package once split from the desktop source tree'
 )
 makedepends=(
   'clang'
