@@ -1,7 +1,7 @@
 name: jappeos_desktop
 description: Desktop environment for JappeOS.
 publish_to: 'none'
-version: 1.0.10
+version: 1.0.11
 google_sign_in_web: ^0.9.1
 
 environment:
