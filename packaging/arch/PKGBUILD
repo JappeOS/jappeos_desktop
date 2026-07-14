@@ -3,6 +3,8 @@
 pkgname=jappeos_desktop
 pkgver=0.0.1
 _tag=dev-v0.0.1
+_jdwm_branch=main
+_wlroots_tag=0.19.0
 pkgrel=1
 pkgdesc='JappeOS desktop shell built with Flutter and JDWM'
 arch=('x86_64')
@@ -32,9 +34,6 @@ depends=(
   'xcb-util-wm'
   'xorg-xwayland'
 )
-optdepends=(
-  'jdwm: shared JappeOS compositor package once split from the desktop source tree'
-)
 makedepends=(
   'clang'
   'curl'
@@ -50,12 +49,16 @@ makedepends=(
 provides=('jappeos-desktop')
 conflicts=('jappeos-desktop')
 options=('!strip')
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/$_tag.tar.gz")
-sha256sums=('SKIP')
+source=(
+  "$pkgname::git+$url.git#tag=$_tag"
+  "jdwm::git+https://github.com/JappeOS/jdwm.git#branch=$_jdwm_branch"
+  "wlroots::git+https://gitlab.freedesktop.org/wlroots/wlroots.git#tag=$_wlroots_tag"
+)
+sha256sums=('SKIP' 'SKIP' 'SKIP')
 
 _appname='jappeos_desktop'
 _pkgroot='usr/lib/jappeos_desktop'
-_srcroot="${pkgname}-${_tag}"
+_srcroot="$pkgname"
 
 _repo_root() {
   if [[ -f "${srcdir}/${_srcroot}/run_build.sh" ]]; then
@@ -68,6 +71,20 @@ _repo_root() {
     echo "Could not locate repository root from ${startdir}" >&2
     return 1
   fi
+}
+
+prepare() {
+  cd "$(_repo_root)"
+
+  if [[ ! -d "${srcdir}/jdwm" || ! -d "${srcdir}/wlroots" ]]; then
+    echo "Using existing vendor sources; makepkg source clones were not found."
+    return 0
+  fi
+
+  rm -rf vendor/jdwm vendor/wlroots
+  mkdir -p vendor
+  cp -a "${srcdir}/jdwm" vendor/jdwm
+  cp -a "${srcdir}/wlroots" vendor/wlroots
 }
 
 build() {

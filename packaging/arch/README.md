@@ -1,9 +1,8 @@
 # jappeos_desktop Arch Packaging
 
-This PKGBUILD packages the JappeOS desktop shell into a Pacman package. The
-desktop package is separate from the `jdwm` compositor package; greeter packages
-should follow the same pattern and depend on `jdwm` instead of being named
-`jdwm`.
+This PKGBUILD packages the JappeOS desktop shell into a Pacman package. It
+builds against the JDWM source in `vendor/jdwm`; JDWM is not resolved as a
+Pacman package for this desktop build.
 
 Build from the repository root:
 
@@ -28,6 +27,17 @@ Docker builder/runtime images. Ubuntu development builds still use the existing
 commands such as `./run_build.sh release`, `./run_build.sh fast`, and
 `./run_build.sh --run`.
 
+The PKGBUILD uses `git+` sources for:
+
+- this repository
+- `vendor/jdwm`
+- `vendor/wlroots`
+
+`prepare()` copies those source clones into the expected `vendor/` paths before
+the build starts. This is required because GitHub tag tarballs do not include
+submodule contents, and the native build still needs a wlroots source tree for
+private headers.
+
 Do not commit `vendor/flutter_clone`. For native package builds, provide Flutter
 through `PATH`, `FLUTTER_BIN`, or `/opt/flutter/bin/flutter`. The ignored
 `vendor/flutter_clone` tree remains for the existing Docker build path, where the
@@ -47,5 +57,5 @@ Docker bundle contents:
 - remove bundled `bin/Xwayland`
 - add `libunwind.so.1 -> /usr/lib/libunwind.so.8`
 
-The native path still uses `vendor/wlroots` as the wlroots source/header tree
-for private wlroots headers while linking against Arch's `wlroots0.19` package.
+The native path uses `vendor/wlroots` as the wlroots source/header tree for
+private wlroots headers while linking against Arch's `wlroots0.19` package.
