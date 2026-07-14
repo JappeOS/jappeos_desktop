@@ -92,7 +92,9 @@ RELEASE_CPPFLAGS := $(COMMON_CPPFLAGS) -O2
 WLR_LDFLAGS :=
 ifdef WLR_ROOT
 WLR_LDFLAGS += -L$(WLR_ROOT)/lib -L$(WLR_ROOT)/lib/x86_64-linux-gnu
+ifneq ($(abspath $(WLR_ROOT)),/usr)
 WLR_LDFLAGS += -Wl,-rpath,$(WLR_ROOT)/lib -Wl,-rpath,$(WLR_ROOT)/lib/x86_64-linux-gnu
+endif
 endif
 
 COMMON_LDFLAGS := $(WLR_LDFLAGS) \

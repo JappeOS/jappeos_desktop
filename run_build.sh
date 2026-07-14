@@ -5,6 +5,8 @@
 #   ./run_build.sh               # docker release build + export bundle
 #   ./run_build.sh fast          # docker release build, skip flutter pub get
 #   ./run_build.sh local         # local (non-docker) release build
+#   ./run_build.sh arch-native release
+#                                # native Arch release build using system libs
 #   ./run_build.sh debug         # docker debug bundle + export bundle
 #   ./run_build.sh profile       # docker profile bundle + export bundle
 #   ./run_build.sh <mode> --run  # run exported bundle after successful build
@@ -21,6 +23,7 @@ if [[ -f "${CONFIG_FILE}" ]]; then
 fi
 
 MODE="release"
+ARCH_NATIVE=0
 RUN_AFTER_BUILD=0
 RUN_ARGS=()
 FLUTTER_BIN="${FLUTTER_BIN:-${SCRIPT_DIR}/vendor/flutter_clone/bin/flutter}"
@@ -54,6 +57,10 @@ Usage:
     Local (non-docker) release build and export:
     build/jappeos/<arch>/release/bundle
 
+  ./run_build.sh arch-native release
+    Native Arch release build and export without Docker-copied runtime libraries:
+    build/jappeos/<arch>/release/bundle
+
   ./run_build.sh debug
     Docker debug bundle export to:
     build/jappeos/<arch>/debug/bundle
@@ -85,6 +92,10 @@ parse_args() {
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      arch-native)
+        ARCH_NATIVE=1
+        shift
+        ;;
       build-image|release|fast|local|debug|profile)
         if (( mode_set )) && [[ "${MODE}" != "$1" ]]; then
           echo "Multiple modes provided: ${MODE} and $1"
@@ -115,6 +126,14 @@ parse_args() {
         ;;
     esac
   done
+}
+
+configure_arch_native() {
+  WLR_ROOT="${WLR_ROOT_ARCH_NATIVE:-/usr}"
+
+  if [[ "${FLUTTER_BIN}" == "${SCRIPT_DIR}/vendor/flutter_clone/bin/flutter" ]] && command -v flutter >/dev/null 2>&1; then
+    FLUTTER_BIN="$(command -v flutter)"
+  fi
 }
 
 resolve_docker_layout() {
@@ -314,6 +333,52 @@ SCRIPT
   echo "${mode^} bundle exported to ${out_dir}/"
 }
 
+export_arch_native_bundle() {
+  local mode="$1"
+  local src_dir=""
+  local out_dir=""
+  src_dir="$(bundle_src_dir "${mode}")"
+  out_dir="$(bundle_out_dir "${mode}")"
+
+  if [[ ! -x "${src_dir}/${TARGET}" ]]; then
+    echo "Missing ${mode} binary: ${src_dir}/${TARGET}"
+    exit 1
+  fi
+
+  rm -rf "${out_dir}"
+  mkdir -p "${out_dir}"
+  cp -a "${src_dir}/." "${out_dir}/"
+
+  cat > "${out_dir}/run_${TARGET}.sh" <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+DIR="$(cd "$(dirname "$0")" && pwd)"
+export LD_LIBRARY_PATH="${DIR}/lib:${LD_LIBRARY_PATH:-}"
+exec "${DIR}/__APP_NAME__" "$@"
+SCRIPT
+  sed -i "s/__APP_NAME__/${TARGET}/g" "${out_dir}/run_${TARGET}.sh"
+  chmod +x "${out_dir}/run_${TARGET}.sh"
+
+  echo "${mode^} Arch-native bundle exported to ${out_dir}/"
+}
+
+run_arch_native_release() {
+  configure_arch_native
+  ensure_wlroots
+  ensure_backend_dir
+  ensure_flutter_clone
+  rm -rf build/linux
+  rm -rf "$(bundle_src_dir release)"
+  "${FLUTTER_BIN}" pub get
+  patch_shadcn_flutter_cache
+  prepare_flutter_linux_build
+  make release_bundle FLUTTER="${FLUTTER_BIN}" WLR_ROOT="${WLR_ROOT}" WLR_SRC_ROOT="${WLR_SRC_ROOT}" BACKEND_DIR="${BACKEND_DIR}"
+  export_arch_native_bundle release
+  if (( RUN_AFTER_BUILD )); then
+    run_exported_bundle release
+  fi
+}
+
 copy_runtime_deps_from_image() {
   local mode="$1"
   local out_dir=""
@@ -407,6 +472,17 @@ run_exported_bundle() {
 }
 
 parse_args "$@"
+
+if (( ARCH_NATIVE )) && [[ "${MODE}" != "release" ]]; then
+  echo "arch-native currently supports only release builds."
+  usage
+  exit 1
+fi
+
+if (( ARCH_NATIVE )); then
+  run_arch_native_release
+  exit 0
+fi
 
 case "${MODE}" in
   build-image)

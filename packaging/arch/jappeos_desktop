@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+app_dir="/usr/lib/jappeos_desktop"
+
+export LD_LIBRARY_PATH="${app_dir}/lib:${LD_LIBRARY_PATH:-}"
+
+exec "${app_dir}/jappeos_desktop" "$@"
