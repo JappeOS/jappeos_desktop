@@ -48,7 +48,7 @@ makedepends=(
 )
 provides=('jappeos-desktop')
 conflicts=('jappeos-desktop')
-options=('!strip')
+options=('strip' '!debug')
 source=(
   "$pkgname::git+$url.git#tag=$_tag"
   "jdwm::git+https://github.com/JappeOS/jdwm.git#branch=$_jdwm_branch"
