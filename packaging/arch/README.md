@@ -19,7 +19,7 @@ makepkg
 The package build calls the native Arch build path:
 
 ```sh
-./run_build.sh arch-native release
+bash ./run_build.sh arch-native release
 ```
 
 This path builds against Arch system libraries under `/usr` and does not use the

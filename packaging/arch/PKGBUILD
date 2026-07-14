@@ -91,7 +91,7 @@ build() {
   if [[ -z "${FLUTTER_BIN:-}" && -x /opt/flutter/bin/flutter ]]; then
     export FLUTTER_BIN=/opt/flutter/bin/flutter
   fi
-  ./run_build.sh arch-native release
+  bash ./run_build.sh arch-native release
 }
 
 package() {
