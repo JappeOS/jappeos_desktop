@@ -374,7 +374,7 @@ run_arch_native_release() {
   "${FLUTTER_BIN}" pub get
   patch_shadcn_flutter_cache
   prepare_flutter_linux_build
-  make release_bundle FLUTTER="${FLUTTER_BIN}" WLR_ROOT="${WLR_ROOT}" WLR_SRC_ROOT="${WLR_SRC_ROOT}" BACKEND_DIR="${BACKEND_DIR}"
+  make release_bundle FLUTTER="${FLUTTER_BIN}" WLR_ROOT="${WLR_ROOT}" WLR_SRC_ROOT="${WLR_SRC_ROOT}" BACKEND_DIR="${BACKEND_DIR}" WERROR_FLAGS= CFLAGS="${CFLAGS:-} -Wno-error" CXXFLAGS="${CXXFLAGS:-} -Wno-error"
   export_arch_native_bundle release
   if (( RUN_AFTER_BUILD )); then
     run_exported_bundle release

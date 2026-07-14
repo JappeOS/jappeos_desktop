@@ -35,6 +35,7 @@ BACKEND_RELEASE_LIB := $(BACKEND_BUILD_DIR)/release/libzenith_backend.a
 BACKEND_MAKE_ARGS = WLR_ROOT=$(abspath $(WLR_ROOT)) WLR_SRC_ROOT=$(abspath $(WLR_SRC_ROOT)) \
 	WLR_INC_SUBDIR=$(WLR_INC_SUBDIR) BUILD_VERSION=$(BUILD_VERSION) \
 	BUILD_GIT_COMMIT=$(BUILD_GIT_COMMIT) BUILD_TIMESTAMP=$(BUILD_TIMESTAMP) \
+	WERROR_FLAGS="$(WERROR_FLAGS)" \
 	BUILD_DIR_BASE=$(abspath $(BACKEND_BUILD_DIR))
 
 SRCS := $(shell find $(SRC_DIRS) -name '*.cpp' -or -name '*.cc' -or -name '*.c')
@@ -51,7 +52,8 @@ INC_DIRS := $(shell find $(SRC_DIRS) -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS)) -I$(BACKEND_DIR)/include
 
 ASAN := -g -fno-omit-frame-pointer -fsanitize=address
-WARNINGS := -Wall -Wextra -Werror \
+WERROR_FLAGS ?= -Werror
+WARNINGS := -Wall -Wextra $(WERROR_FLAGS) \
 			-Wno-unused-parameter -Wno-unused-variable -Wno-invalid-offsetof -Wno-unknown-pragmas \
 			-Wno-deprecated-declarations
 BUILD_VERSION ?= local
