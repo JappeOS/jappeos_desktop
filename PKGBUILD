@@ -1,8 +1,8 @@
 # Maintainer: JappeOS
 
 pkgname=jappeos_desktop
-pkgver=1.0.1
-_tag=dev-v1.0.1
+pkgver=1.0.2
+_tag=dev-v1.0.2
 pkgrel=1
 pkgdesc='JappeOS desktop shell built with Flutter and JDWM'
 arch=('x86_64')
