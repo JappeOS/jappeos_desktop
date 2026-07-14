@@ -85,3 +85,84 @@ class _DesktopWindowViewState extends State<DesktopWindowView> {
     );
   }
 }
+/// A pressable widget that shows a window's contents along with it's title.
+class DesktopWindowViewNew extends StatefulWidget {
+  final String? title;
+  final Widget? icon;
+  final bool isHighlighted;
+  final double aspectRatio;
+  final double height;
+  final void Function()? onPress;
+  final Widget Function(bool isHovered)? child;
+
+  const DesktopWindowViewNew({
+    super.key,
+    this.title,
+    this.icon,
+    this.isHighlighted = false,
+    this.aspectRatio = 250 / 170,
+    this.height = 170,
+    this.onPress,
+    this.child,
+  });
+
+  @override
+  _DesktopWindowViewNewState createState() => _DesktopWindowViewNewState();
+}
+
+class _DesktopWindowViewNewState extends State<DesktopWindowViewNew> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final width = widget.height * widget.aspectRatio;
+
+    return SizedBox(
+      width: width,
+      height: widget.height,
+      child: Stack(
+        fit: StackFit.loose,
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.card,
+                borderRadius: theme.borderRadiusLg,
+              ),
+            ),
+          ),
+          if (widget.icon != null)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: SizedBox.square(
+                dimension: 24 * theme.scaling,
+                child: widget.icon,
+              ),
+            ),
+        ],
+      ),
+    );
+
+    /*return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: width,
+          height: widget.height,
+          child: SecondaryButton(
+            //borderRadius: borderRadius,
+            onHover: (p0) => setState(() => _isHovered = p0),
+            onPressed: widget.onPress,
+            //isHighlighted: widget.isHighlighted,
+            child: widget.child?.call(_isHovered) ?? const SizedBox.shrink(),
+          ),
+        ),
+        SizedBox(height: 4 * Theme.of(context).scaling),
+        const SizedBox(height: 11 / 2),
+        Text(widget.title).large(),
+        const SizedBox(height: 11 / 2),
+      ],
+    );*/
+  }
+}

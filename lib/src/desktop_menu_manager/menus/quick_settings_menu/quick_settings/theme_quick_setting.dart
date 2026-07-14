@@ -48,7 +48,7 @@ class ThemeQuickSetting extends StatelessWidget
       title: _title,
       value: _isEnabled(theme),
       onToggle: (_) => theme.toggleTheme(),
-      child: const Text("Not implemented yet"),
+      child: Text("Coming soon!"),
     );
   }
 
