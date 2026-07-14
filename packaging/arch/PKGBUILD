@@ -37,7 +37,6 @@ depends=(
 makedepends=(
   'clang'
   'curl'
-  'flutter'
   'git'
   'libc++'
   'libc++abi'
