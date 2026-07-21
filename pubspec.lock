@@ -266,7 +266,7 @@ packages:
     description:
       path: "."
       ref: master
-      resolved-ref: "3b415f09fe54b052549c5e2924f764b7e04318fa"
+      resolved-ref: fdc5db34f633e05637edbe6bbe5451d9ad5dad0a
       url: "https://github.com/JappeOS/freedesktop_desktop_entry.git"
     source: git
     version: "0.6.1"
@@ -274,10 +274,10 @@ packages:
     dependency: transitive
     description:
       name: freezed_annotation
-      sha256: c2e2d632dd9b8a2b7751117abcfc2b4888ecfe181bd9fca7170d9ef02e595fe2
+      sha256: "7294967ff0a6d98638e7acb774aac3af2550777accd8149c90af5b014e6d44d8"
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.4"
+    version: "3.1.0"
   frontend_server_client:
     dependency: transitive
     description:
