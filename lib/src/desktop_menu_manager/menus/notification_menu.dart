@@ -18,8 +18,10 @@
 
 import 'dart:async';
 
+import 'package:flutter/material.dart' show DateUtils;
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:jappeos_desktop/src/extensions.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../../components/desktop_container.dart';
@@ -99,65 +101,17 @@ class NotificationMenu extends DesktopMenu {
 }
 
 class _NotificationMenuState extends State<NotificationMenu> {
-  CalendarValue? _value;
-  CalendarView _view = CalendarView.now();
-
   @override
   Widget build(BuildContext context) {
-    final defaultPadding = 4 * Theme.of(context).scaling;
-
-    Widget buildCalendar() => Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            OutlineButton(
-              density: ButtonDensity.icon,
-              onPressed: () {
-                setState(() {
-                  _view = _view.previous;
-                });
-              },
-              child: const Icon(Icons.arrow_back).iconXSmall(),
-            ),
-            Text('${_view.month} ${_view.year}') // TODO: localizations.getMonth
-                .small()
-                .medium()
-                .center()
-                .expanded(),
-            OutlineButton(
-              density: ButtonDensity.icon,
-              onPressed: () {
-                setState(() {
-                  _view = _view.next;
-                });
-              },
-              child: const Icon(Icons.arrow_forward).iconXSmall(),
-            ),
-          ],
-        ),
-        const Gap(16),
-        Calendar(
-          value: _value,
-          view: _view,
-          onChanged: (value) {
-            setState(() {
-              _value = value;
-            });
-          },
-          selectionMode: CalendarSelectionMode.range,
-        ),
-      ],
-    );
-
+    final defaultPadding = 16 * Theme.of(context).scaling;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         DesktopOverlayContainer(
           width: 400,
+          height: 375,
           padding: EdgeInsets.all(defaultPadding),
-          child: buildCalendar(),
+          child: _Calendar(),
         ),
         SizedBox(height: defaultPadding),
         DesktopOverlayContainer(
@@ -299,5 +253,188 @@ class _NotificationCardState extends State<_NotificationCard> {
         ),
       ),
     );
+  }
+}
+
+class _Calendar extends StatefulWidget {
+  const _Calendar({super.key});
+
+  @override
+  State<_Calendar> createState() => _CalendarState();
+}
+
+class _CalendarState extends State<_Calendar> {
+  static const double weekdayHeaderHeight = 32.0;
+
+  late final List<String> weekdays;
+
+  DateTime _month = DateTime.now();
+  DateTime? _selectedDate = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    List<String> wdays = [];
+    for (int i = 1; i <= 7; i++) {
+      wdays.add(
+        ShadcnLocalizations.of(context).getAbbreviatedWeekday(i)
+      );
+    }
+    weekdays = wdays;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ShadcnLocalizations localizations = ShadcnLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            OutlineButton(
+              density: ButtonDensity.icon,
+              onPressed: () {
+                setState(() {
+                  _month = _month.addMonths(-1);
+                });
+              },
+              child: const Icon(Icons.arrow_back).iconXSmall(),
+            ),
+            Text('${localizations.getMonth(_month.month)} ${_month.year}')
+                .small()
+                .medium()
+                .center()
+                .expanded(),
+            OutlineButton(
+              density: ButtonDensity.icon,
+              onPressed: () {
+                setState(() {
+                  _month = _month.addMonths(1);
+                });
+              },
+              child: const Icon(Icons.arrow_forward).iconXSmall(),
+            ),
+          ],
+        ),
+        const Gap(16),
+        Expanded(child: _buildCalendar()),
+      ],
+    );
+  }
+
+  Widget _buildCalendar() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Weekday header.
+        SizedBox(
+          height: weekdayHeaderHeight,
+          child: Row(
+            children: weekdays.map((weekday) => Expanded(
+                child: Center(
+                  child: Text(
+                    weekday,
+                  ).small().muted(),
+                ),
+              ),
+            ).toList(),
+          ),
+        ),
+
+        // The grid fills the remaining height.
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const weeks = 6;
+              const daysPerWeek = 7;
+              const totalDays = weeks * daysPerWeek;
+
+              final gridHeight = constraints.maxHeight;
+
+              // The grid must have a finite, positive height.
+              if (!gridHeight.isFinite || gridHeight <= 0) {
+                throw FlutterError(
+                  'Calendar requires a finite, positive height. '
+                  'Ensure that _Calendar is placed inside a '
+                  'parent with bounded height.',
+                );
+              }
+
+              final cellHeight = gridHeight / weeks;
+
+              final firstOfMonth = DateTime(
+                _month.year,
+                _month.month,
+                1,
+              );
+
+              final leadingDays =
+                  (firstOfMonth.weekday - DateTime.monday) % 7;
+
+              final firstDisplayedDay = DateTime(
+                firstOfMonth.year,
+                firstOfMonth.month,
+                firstOfMonth.day - leadingDays,
+              );
+
+              return GridView.builder(
+                padding: EdgeInsets.zero,
+                physics: const NeverScrollableScrollPhysics(),
+                primary: false,
+                itemCount: totalDays,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: daysPerWeek,
+                  mainAxisExtent: cellHeight,
+                ),
+                itemBuilder: (context, index) {
+                  final day = DateTime(
+                    firstDisplayedDay.year,
+                    firstDisplayedDay.month,
+                    firstDisplayedDay.day + index,
+                  );
+
+                  final isSelected = DateUtils.isSameDay(
+                    day,
+                    _selectedDate,
+                  );
+
+                  final isMuted = !isSelected &&
+                      (day.month != _month.month ||
+                      day.weekday == DateTime.sunday ||
+                      day.weekday == DateTime.saturday);
+
+                  return Center(
+                    child: SizedBox.square(
+                      dimension: 42,
+                      child: IconButton(
+                        variance: isSelected
+                            ? ButtonVariance.primary
+                            : ButtonVariance.ghost,
+                        icon: Text(
+                          '${day.day}',
+                          overflow: TextOverflow.visible,
+                          style: TextStyle(
+                            color: isMuted
+                                ? Theme.of(context).colorScheme.mutedForeground
+                                : null,
+                          ),
+                        ),
+                        onPressed: () => _onDateSelected(day),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _onDateSelected(DateTime date) {
+    setState(() {
+      _selectedDate = date;
+    });
   }
 }
