@@ -18,6 +18,7 @@
 
 import 'package:jappeos_desktop_base/jappeos_desktop_base.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:shadcn_flutter/shadcn_flutter_extension.dart';
 
 import '../constants.dart';
 import '../desktop_menu_manager/desktop_menu_controller.dart';
@@ -199,13 +200,13 @@ class _DTopbarButtonNewState extends State<DTopbarButtonNew> {
                 theme,
                 Padding(
                   padding: EdgeInsets.symmetric(
-                    horizontal: 6 * theme.scaling,
+                    horizontal: 12 * theme.scaling,
                   ),
                   child: IconTheme(
                     data: IconTheme.of(context).copyWith(size: _kIconSize),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      spacing: 6 * theme.scaling,
+                      spacing: 12 * theme.scaling,
                       children: widget.children,
                     ),
                   ),
@@ -219,19 +220,45 @@ class _DTopbarButtonNewState extends State<DTopbarButtonNew> {
   }
 
   Widget _buildContainer(ThemeData theme, Widget child) => Padding(
-    padding: EdgeInsets.symmetric(horizontal: 6 * theme.scaling),
+    padding: EdgeInsets.symmetric(horizontal: 4 * theme.scaling),
     child: Center(
       child: SizedBox(
         height: _kHeight,
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: _borderRad,
-            color: _hovering || widget.isSelected
-                ? theme.colorScheme.secondary.scaleAlpha(theme.surfaceOpacity ?? 0)
-                : Colors.transparent,
-            border: _hovering || widget.isSelected
-                ? Border.all(width: _borderWidth, color: theme.colorScheme.border)
-                : Border.all(width: _borderWidth, color: Colors.transparent),
+            color: () {
+              if (widget.isSelected) {
+                return theme.colorScheme.foreground.scaleAlpha(0.20);
+              }
+              if (_hovering) {
+                return theme.colorScheme.foreground.scaleAlpha(0.15);
+              }
+              return Colors.transparent;
+            }(),
+            border: () {
+              if (widget.isSelected) {
+                return Border(
+                  top: BorderSide(
+                    width: _borderWidth,
+                    color: theme.colorScheme.isDark
+                        ? Colors.black.scaleAlpha(0.40)
+                        : Colors.black.scaleAlpha(0.30),
+                  ),
+                );
+              }
+              if (_hovering) {
+                return Border(
+                  top: BorderSide(
+                    width: _borderWidth,
+                    color: theme.colorScheme.isDark
+                        ? Colors.white.scaleAlpha(0.25)
+                        : Colors.white.scaleAlpha(0.35),
+                  ),
+                );
+              }
+              return null;
+            }(),
           ),
           child: child,
         ),
