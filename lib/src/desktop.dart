@@ -154,14 +154,17 @@ class DesktopState extends State<Desktop> {
     );
   }
 
-  ThemeData _getTheme(bool dark) => ThemeData(
-        colorScheme: dark
-            ? ColorSchemes.darkDefaultColor
-            : ColorSchemes.lightDefaultColor,
-        radius: 0.9,
-        surfaceOpacity: 0.85,
-        surfaceBlur: 9,
-      );
+  ThemeData _getTheme(bool dark) {
+    final surfaceOpacity = 0.6;
+    return ThemeData(
+      colorScheme: dark
+          ? _getDarkDefaultColor(surfaceOpacity)
+          : _getLightDefaultColor(surfaceOpacity),
+      radius: 0.9,
+      surfaceOpacity: surfaceOpacity,
+      surfaceBlur: 30,
+    );
+  }
 
   List<MenuItem> _buildContextMenuItems() {
     return [
@@ -222,5 +225,158 @@ class DesktopState extends State<Desktop> {
       registry: _menuRegistry,
       menuController: _menuController,
     );
+  }
+
+  /// Light defaultcolor color scheme.
+  static ColorScheme _getLightDefaultColor(double surfaceOpacity) {
+    final bgColor = Color(0xFFFFFFFF);
+    return ColorScheme(
+      brightness: Brightness.light,
+      background: bgColor,
+      foreground: Color(0xFF0A0A0A),
+      card: Color(0xFFFFFFFF),
+      cardForeground: Color(0xFF0A0A0A),
+      popover: Color(0xFFFFFFFF),
+      popoverForeground: Color(0xFF0A0A0A),
+      primary: Color(0xFF171717),
+      primaryForeground: Color(0xFFFAFAFA),
+      secondary: _calculateTransparentColorClamped(
+        bgColor: bgColor,
+        bgSecondaryColor: Color(0xFFF5F5F5),
+        surfaceOpacity: surfaceOpacity,
+      ),
+      secondaryForeground: Color(0xFF171717),
+      muted: _calculateTransparentColorClamped(
+        bgColor: bgColor,
+        bgSecondaryColor: Color(0xFFF5F5F5),
+        surfaceOpacity: surfaceOpacity,
+      ),
+      mutedForeground: Color(0xFF737373),
+      accent: _calculateTransparentColorClamped(
+        bgColor: bgColor,
+        bgSecondaryColor: Color(0xFFF5F5F5),
+        surfaceOpacity: surfaceOpacity,
+      ),
+      accentForeground: Color(0xFF171717),
+      destructive: Color(0xFFE7000B),
+      border: Color(0xFFE5E5E5),
+      input: Color(0xFFE5E5E5),
+      ring: Color(0xFFA1A1A1),
+      chart1: Color(0xFFF54900),
+      chart2: Color(0xFF009689),
+      chart3: Color(0xFF104E64),
+      chart4: Color(0xFFFFB900),
+      chart5: Color(0xFFFE9A00),
+      sidebar: _calculateTransparentColorClamped(
+        bgColor: bgColor,
+        bgSecondaryColor: Color(0xFFFAFAFA),
+        surfaceOpacity: surfaceOpacity,
+      ),
+      sidebarForeground: Color(0xFF0A0A0A),
+      sidebarPrimary: Color(0xFF171717),
+      sidebarPrimaryForeground: Color(0xFFFAFAFA),
+      sidebarAccent: Color(0xFFF5F5F5),
+      sidebarAccentForeground: Color(0xFF171717),
+      sidebarBorder: Color(0xFFE5E5E5),
+      sidebarRing: Color(0xFFA1A1A1),
+    );
+  }
+
+  /// Dark defaultcolor color scheme.
+  static ColorScheme _getDarkDefaultColor(double surfaceOpacity) {
+    final bgColor = Color(0xFF0A0A0A);
+    return ColorScheme(
+      brightness: Brightness.dark,
+      background: bgColor,
+      foreground: Color(0xFFFAFAFA),
+      card: Color(0xFF171717),
+      cardForeground: Color(0xFFFAFAFA),
+      popover: Color(0xFF171717),
+      popoverForeground: Color(0xFFFAFAFA),
+      primary: Color(0xFFE5E5E5),
+      primaryForeground: Color(0xFF171717),
+      secondary: _calculateTransparentColorClamped(
+        bgColor: bgColor,
+        bgSecondaryColor: Color(0xFF262626),
+        surfaceOpacity: surfaceOpacity,
+      ),
+      secondaryForeground: Color(0xFFFAFAFA),
+      muted: _calculateTransparentColorClamped(
+        bgColor: bgColor,
+        bgSecondaryColor: Color(0xFF262626),
+        surfaceOpacity: surfaceOpacity,
+      ),
+      mutedForeground: Color(0xFFA1A1A1),
+      accent: _calculateTransparentColorClamped(
+        bgColor: bgColor,
+        bgSecondaryColor: Color(0xFF262626),
+        surfaceOpacity: surfaceOpacity,
+      ),
+      accentForeground: Color(0xFFFAFAFA),
+      destructive: Color(0xFFFF6467),
+      border: Color(0x1AFFFFFF),
+      input: Color(0x26FFFFFF),
+      ring: Color(0xFF737373),
+      chart1: Color(0xFF1447E6),
+      chart2: Color(0xFF00BC7D),
+      chart3: Color(0xFFFE9A00),
+      chart4: Color(0xFFAD46FF),
+      chart5: Color(0xFFFF2056),
+      sidebar: _calculateTransparentColorClamped(
+        bgColor: bgColor,
+        bgSecondaryColor: Color(0xFF171717),
+        surfaceOpacity: surfaceOpacity,
+      ),
+      sidebarForeground: Color(0xFFFAFAFA),
+      sidebarPrimary: Color(0xFF1447E6),
+      sidebarPrimaryForeground: Color(0xFFFAFAFA),
+      sidebarAccent: Color(0xFF262626),
+      sidebarAccentForeground: Color(0xFFFAFAFA),
+      sidebarBorder: Color(0x1AFFFFFF),
+      sidebarRing: Color(0xFF737373),
+    );
+  }
+
+  static Color _calculateTransparentColorClamped({
+    required Color bgColor,
+    required Color bgSecondaryColor,
+    required double surfaceOpacity,
+  }) {
+    if (surfaceOpacity < 0.0 || surfaceOpacity > 1.0) {
+      throw ArgumentError.value(
+        surfaceOpacity,
+        'surfaceOpacity',
+        'Must be between 0.0 and 1.0.',
+      );
+    }
+
+    // Flutter's Color.fromARGB uses an 8-bit alpha channel.
+    final alphaByte = (surfaceOpacity * 255).round();
+    final alpha = alphaByte / 255.0;
+
+    // At zero opacity, the overlay cannot change the background.
+    if (alphaByte == 0) {
+      if (bgColor == bgSecondaryColor) {
+        return Color.fromARGB(
+          0,
+          (bgSecondaryColor.r * 255.0).round() & 0xff,
+          (bgSecondaryColor.g * 255.0).round() & 0xff,
+          (bgSecondaryColor.b * 255.0).round() & 0xff,
+        );
+      }
+
+      return Colors.transparent;
+    }
+
+    int adjustChannel(int background, int target) {
+      // C_overlay = C_background + (C_target - C_background) / alpha
+      final adjusted = background + (target - background) / alpha;
+      return adjusted.clamp(0, 255).round();
+    }
+
+    final red = adjustChannel((bgSecondaryColor.r * 255.0).round() & 0xff, (bgColor.r * 255.0).round() & 0xff);
+    final green = adjustChannel((bgSecondaryColor.g * 255.0).round() & 0xff, (bgColor.g * 255.0).round() & 0xff);
+    final blue = adjustChannel((bgSecondaryColor.b * 255.0).round() & 0xff, (bgColor.b * 255.0).round() & 0xff);
+    return Color.fromARGB(alphaByte, red, green, blue);
   }
 }
