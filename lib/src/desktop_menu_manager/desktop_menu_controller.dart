@@ -191,8 +191,8 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
     final minY = pad;
     final maxY = bounds.height - _menuSize.height - pad;
 
-    left = left.clamp(minX, maxX);
-    top = top.clamp(minY, maxY);
+    left = left.clamp(minX, maxX.max(minX));
+    top = top.clamp(minY, maxY.max(minY));
 
     _position = Offset(left, top);
   }
@@ -242,7 +242,7 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
                               });
 
                               if (menu is FullscreenDesktopMenu) {
-                                final bounds = widget.monitor.bounds;
+                                final bounds = widget.monitor.usableBounds;
                                 return SizedBox(
                                   width: bounds.width,
                                   height: bounds.height,
