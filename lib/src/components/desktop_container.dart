@@ -44,7 +44,7 @@ class DesktopOverlayContainer extends StatelessWidget {
       surfaceBlur: Theme.of(context).surfaceBlur,
       borderRadius: increasedBorderRadius
           ? Theme.of(context).borderRadiusLg * 2
-          : Theme.of(context).borderRadiusLg,
+          : Theme.of(context).borderRadiusXxl,
       boxShadow: [
         BoxShadow(
           color: Colors.black.withAlpha(75),
@@ -67,17 +67,18 @@ class DesktopBlurContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.background.scaleAlpha(Theme.of(context).surfaceOpacity ?? 0),
+        color: theme.colorScheme.background.scaleAlpha(theme.surfaceOpacity ?? 0),
       ),
       //backgroundBlur: true,
       //borderRadius: Theme.of(context).borderRadiusMd,
       //border: ShadeContainerBorder.double,
       child: SurfaceBlur(
-        surfaceBlur: Theme.of(context).surfaceBlur,
+        surfaceBlur: theme.surfaceBlur,
         child: child
       ),
     );
