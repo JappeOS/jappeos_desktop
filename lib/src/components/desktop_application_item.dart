@@ -17,7 +17,7 @@
 // ignore_for_file: library_private_types_in_public_api
 
 import 'package:freedesktop_desktop_entry/freedesktop_desktop_entry.dart';
-import 'package:freedesktop_desktop_entry/src/entry.dart';
+import 'package:jappeos_desktop/src/utils.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -381,53 +381,73 @@ class DesktopApplicationContextMenu extends StatefulWidget {
 }
 
 class _DesktopApplicationContextMenuState extends State<DesktopApplicationContextMenu> {
-  late Future<Map<String, DesktopEntry>> _entriesFuture;
-  Map<String, Map<String, Entry>>? _actions;
+  late final Future<DesktopEntry?> _entryFuture;
+
+  late bool _useDiscreteGpu;
+  late final List<MenuButton> _actionItems;
 
   @override
   void initState() {
     super.initState();
-    _entriesFuture = context.read<DesktopEntryProvider>().getEntries();
+    _entryFuture = context.read<DesktopEntryProvider>().getEntries().then((entries) {
+      final entry = entries[widget.entry];
+      _useDiscreteGpu = entry?.entries
+          [DesktopEntryKey.prefersNonDefaultGpu.string]?.value.getBoolean() ?? false;
+      _actionItems = entry?.actions.entries.map((action) {
+        final name = action.value[DesktopEntryKey.name.string]?.value ?? action.key;
+        return MenuButton(
+          onPressed: (_) => _launch(entry, action.key),
+          child: Text(name),
+        );
+      }).toList() ?? [];
+      return entry;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: _entriesFuture,
+      future: _entryFuture,
       builder: (context, snapshot) {
-        final desktopEntryProvider = context.read<DesktopEntryProvider>();
         DesktopEntry? entry;
         if (snapshot.connectionState == ConnectionState.done &&
             snapshot.hasData &&
             snapshot.data != null) {
-          final data = snapshot.data!;
-          entry = data[widget.entry];
-          _actions ??= entry?.actions;
+          entry = snapshot.data!;
         }
 
-        final actionItems = _actions?.entries.map((action) {
-          final name = action.value[DesktopEntryKey.name.string]?.value ?? action.key;
-          return MenuButton(
-            child: Text(name),
-            onPressed: (_) {
-              desktopEntryProvider.launchDesktopEntry(entry!, action.key);
-            },
-          );
-        }).toList() ?? [];
+        if (entry == null) {
+          return widget.child;
+        }
 
         return ContextMenu(
           items: [
-            if (actionItems.isNotEmpty) ... [
-              ...actionItems,
+            MenuButton(
+              onPressed: (_) => _launch(entry!),
+              child: Text("Launch"),
+            ),
+            ..._actionItems,
+            const MenuDivider(),
+            if (hasDiscreteGpu()) ... [
+              MenuCheckbox(
+                value: _useDiscreteGpu,
+                onChanged: (_, value) {
+                  setState(() => _useDiscreteGpu = value);
+                },
+                autoClose: false,
+                child: const Text('Use Discrete GPU'),
+              ),
               const MenuDivider(),
             ],
             if (widget.onOpenDetails != null) ... [
-              const MenuButton(
+              MenuButton(
+                onPressed: (_) => widget.onOpenDetails!(),
                 child: Text('Open Details'),
               ),
             ],
             if (widget.onQuit != null) ... [
-              const MenuButton(
+              MenuButton(
+                onPressed: (_) => widget.onQuit!(),
                 child: Text('Quit'),
               ),
             ],
@@ -435,6 +455,14 @@ class _DesktopApplicationContextMenuState extends State<DesktopApplicationContex
           child: widget.child,
         );
       },
+    );
+  }
+
+  void _launch(DesktopEntry entry, [String action = ""]) {
+    context.read<DesktopEntryProvider>().launchDesktopEntry(
+      entry,
+      action: action,
+      environment: getGraphicsEnvironmentVariables(_useDiscreteGpu),
     );
   }
 }
