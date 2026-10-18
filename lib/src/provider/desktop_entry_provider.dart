@@ -80,8 +80,9 @@ class DesktopEntryProvider extends ChangeNotifier {
   }
 
   Future<bool> launchDesktopEntry(
-    DesktopEntry desktopEntry,
-    [String action = ""]
+    DesktopEntry desktopEntry, {
+    String action = "",
+    Map<String, String> environment = const {}}
   ) async {
     final baseEntries = desktopEntry.entries;
     final actionEntries = desktopEntry.actions[action];
@@ -110,12 +111,17 @@ class DesktopEntryProvider extends ChangeNotifier {
       return false;
     }
     terminal ??= baseEntries[DesktopEntryKey.terminal.string]?.value.getBoolean() ?? false;
-    return _launchApplication(command: exec, terminal: terminal);
+    return _launchApplication(
+      command: exec,
+      terminal: terminal,
+      environment: environment
+    );
   }
 
   Future<bool> _launchApplication({
     required String command,
     bool terminal = false,
+    Map<String, String> environment = const {},
   }) async {
     // FIXME
     command = command.replaceAll(RegExp(r'( %.?)'), '');
@@ -123,9 +129,17 @@ class DesktopEntryProvider extends ChangeNotifier {
 
     try {
       if (terminal) {
-        await Process.start('kgx', ['-e', command]);
+        await Process.start(
+          'kgx',
+          ['-e', command],
+          environment: environment
+        );
       } else {
-        await Process.start('/bin/sh', ['-c', command]);
+        await Process.start(
+          '/bin/sh',
+          ['-c', command],
+          environment: environment
+        );
       }
       return true;
     } on ProcessException catch (e) {
