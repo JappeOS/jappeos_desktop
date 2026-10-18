@@ -268,10 +268,14 @@ class _LauncherMenuState extends State<LauncherMenu> {
                                     ),
                                   )
                                 : const BoxDecoration(),
-                            child: DesktopApplicationItem.iconWithTitle(
+                            child: DesktopApplicationContextMenu.fromEntry(
                               key: ValueKey(e.key),
-                              entry: e.key,
-                              onPressed: () => _onDesktopMenuPressed(e.value),
+                              entry: e.value,
+                              child: DesktopApplicationItem.iconWithTitle(
+                                key: ValueKey(e.key),
+                                entry: e.key,
+                                onPressed: () => _onDesktopMenuPressed(e.value),
+                              ),
                             ),
                           );
                         },

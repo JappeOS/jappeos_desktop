@@ -363,17 +363,37 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
 }
 
 class DesktopApplicationContextMenu extends StatefulWidget {
-  final String entry;
+  final String? entryId;
+  final DesktopEntry? desktopEntry;
   final Widget child;
   final void Function()? onQuit;
   final void Function()? onOpenDetails;
 
   const DesktopApplicationContextMenu({
-    super.key, required this.entry,
+    super.key,
+    this.entryId,
+    this.desktopEntry,
     required this.child,
     this.onQuit,
     this.onOpenDetails,
-  });
+  }) : assert((entryId != null) ^ (desktopEntry != null),
+          "Either entryId or desktopEntry must be provided.");
+
+  factory DesktopApplicationContextMenu.fromEntry({
+    Key? key,
+    required DesktopEntry entry,
+    required Widget child,
+    void Function()? onQuit,
+    void Function()? onOpenDetails,
+  }) {
+    return DesktopApplicationContextMenu(
+      key: key,
+      desktopEntry: entry,
+      onQuit: onQuit,
+      onOpenDetails: onOpenDetails,
+      child: child,
+    );
+  }
 
   @override
   State<DesktopApplicationContextMenu> createState()
@@ -389,19 +409,32 @@ class _DesktopApplicationContextMenuState extends State<DesktopApplicationContex
   @override
   void initState() {
     super.initState();
-    _entryFuture = context.read<DesktopEntryProvider>().getEntries().then((entries) {
-      final entry = entries[widget.entry];
-      _useDiscreteGpu = entry?.entries
-          [DesktopEntryKey.prefersNonDefaultGpu.string]?.value.getBoolean() ?? false;
-      _actionItems = entry?.actions.entries.map((action) {
-        final name = action.value[DesktopEntryKey.name.string]?.value ?? action.key;
-        return MenuButton(
-          onPressed: (_) => _launch(entry, action.key),
-          child: Text(name),
-        );
-      }).toList() ?? [];
-      return entry;
-    });
+    if (widget.entryId != null) {
+      _entryFuture = context.read<DesktopEntryProvider>().getEntries().then((entries) {
+        final entry = entries[widget.entryId!];
+        _handleEntry(entry);
+        return entry;
+      });
+    } else if (widget.desktopEntry != null) {
+      _entryFuture = () {
+        _handleEntry(widget.desktopEntry);
+        return Future.value(widget.desktopEntry);
+      }();
+    } else {
+      _entryFuture = Future.value(null);
+    }
+  }
+
+  void _handleEntry(DesktopEntry? entry) {
+    _useDiscreteGpu = entry?.entries
+        [DesktopEntryKey.prefersNonDefaultGpu.string]?.value.getBoolean() ?? false;
+    _actionItems = entry?.actions.entries.map((action) {
+      final name = action.value[DesktopEntryKey.name.string]?.value ?? action.key;
+      return MenuButton(
+        onPressed: (_) => _launch(entry, action.key),
+        child: Text(name),
+      );
+    }).toList() ?? [];
   }
 
   @override

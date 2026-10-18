@@ -410,7 +410,7 @@ class _DesktopDockState extends State<DesktopDock> {
         if (entry.item != null) {
           return DesktopApplicationContextMenu(
             key: ValueKey<String>("dock-app-${entry.item!}"),
-            entry: entry.item!,
+            entryId: entry.item!,
             onOpenDetails: () {
               // TODO
             },
