@@ -1,7 +1,7 @@
 name: jappeos_desktop
 description: Desktop environment for JappeOS.
 publish_to: 'none'
-version: 1.0.31
+version: 1.0.32
 google_sign_in_web: ^0.9.1
 
 environment:
@@ -56,6 +56,7 @@ dependencies:
   collection: ^1.19.1
   material_symbols_icons: ^4.2906.0
   fuzzywuzzy: ^1.2.0
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:
