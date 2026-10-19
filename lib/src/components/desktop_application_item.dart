@@ -389,8 +389,8 @@ class DesktopApplicationContextMenu extends StatefulWidget {
 class _DesktopApplicationContextMenuState extends State<DesktopApplicationContextMenu> {
   DesktopEntry? _entry;
 
-  late bool _useDiscreteGpu;
-  late final List<MenuButton> _actionItems;
+  bool _useDiscreteGpu = false;
+  List<MenuButton> _actionItems = [];
 
   @override
   void initState() {
