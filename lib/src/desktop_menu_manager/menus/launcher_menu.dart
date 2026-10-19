@@ -87,7 +87,6 @@ class _LauncherMenuState extends State<LauncherMenu> {
 
   late final TextEditingController _controller;
   final ScrollController _scrollController = ScrollController();
-  late Future<Map<String, DesktopEntry>> _entriesFuture;
   late List<MapEntry<String, DesktopEntry>> _entries;
   String _query = '';
   Timer? _debounce;
@@ -103,7 +102,6 @@ class _LauncherMenuState extends State<LauncherMenu> {
 
     _searchFocus = FocusNode()..requestFocus();
     _controller = TextEditingController();
-    _entriesFuture = context.read<DesktopEntryProvider>().getEntries();
     _entries = [];
 
     _controller.addListener(() {
@@ -208,14 +206,13 @@ class _LauncherMenuState extends State<LauncherMenu> {
             Divider(),
             _HorizontalChipScroller(items: _buildCategories(theme)),
             Expanded(
-              child: FutureBuilder(
-                future: _entriesFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) return const SizedBox.shrink();
-                  if (!snapshot.hasData || snapshot.data == null) return const SizedBox.shrink();
+              child: Consumer<DesktopEntryProvider>(
+                builder: (context, provider, child) {
+                  final currentEntries = provider.entries;
+                  if (currentEntries.isEmpty) return const SizedBox.shrink();
 
                   if (_entries.isEmpty) {
-                    _entries = snapshot.data!.entries
+                    _entries = currentEntries.entries
                         .where((e) => !e.value.isHidden())
                         .toList();
                   }

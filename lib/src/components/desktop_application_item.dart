@@ -121,21 +121,14 @@ class DesktopApplicationItem extends StatefulWidget {
 }
 
 class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
-  late Future<Map<String, DesktopEntry>> _entriesFuture;
   Future<Widget>? _iconFuture;
-  String? _title;
+  late String _title;
   bool _isHovered = false, _isPressed = false;
 
   double get _width =>
       widget.showTitle ? 100 * widget.sizeFactor : 80 * widget.sizeFactor;
 
   double? get _height => widget.showTitle ? null : 80 * widget.sizeFactor;
-
-  @override
-  void initState() {
-    super.initState();
-    _entriesFuture = context.read<DesktopEntryProvider>().getEntries();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -154,36 +147,29 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
       );
     }
 
-    return FutureBuilder(
-      future: _entriesFuture,
-      builder: (context, snapshot) {
-        final desktopEntryProvider = context.read<DesktopEntryProvider>();
-        DesktopEntry? entry;
-        if (snapshot.connectionState == ConnectionState.done &&
-            snapshot.hasData &&
-            snapshot.data != null) {
-          final data = snapshot.data!;
-          entry = _resolveDesktopEntry(data, widget.entry);
-          _title ??=
-              entry?.entries[DesktopEntryKey.name.string]?.value ?? "Unknown";
-          if (entry != null) {
-            _iconFuture ??=
-                desktopEntryProvider.getIconWidget(entry, size: iconSize);
-          }
-        }
+    final desktopEntryProvider = context.read<DesktopEntryProvider>();
+    final entries = context.select<DesktopEntryProvider, Map<String, DesktopEntry>>((value) => value.entries);
+    final entry = _resolveDesktopEntry(
+      entries,
+      widget.entry,
+    );
 
-        final title = _title ?? "Unknown";
+    _title = entry?.entries[DesktopEntryKey.name.string]?.value ?? "Unknown";
+    if (entry == null) {
+      setState(() => _iconFuture = null);
+    } else if (_iconFuture == null) {
+      setState(() => _iconFuture ??=
+          desktopEntryProvider.getIconWidget(entry, size: iconSize));
+    }
 
-        return _buildBase(
-          iconSize: iconSize,
-          title: title,
-          onTap: widget.onPressed ??
-              (entry != null
-                  ? () => desktopEntryProvider.launchDesktopEntry(entry!)
-                  : null),
-          onSecondaryTap: widget.onPressedSecondary,
-        );
-      },
+    return _buildBase(
+      iconSize: iconSize,
+      title: _title,
+      onTap: widget.onPressed ??
+          (entry != null
+              ? () => desktopEntryProvider.launchDesktopEntry(entry)
+              : null),
+      onSecondaryTap: widget.onPressedSecondary,
     );
   }
 
@@ -401,7 +387,7 @@ class DesktopApplicationContextMenu extends StatefulWidget {
 }
 
 class _DesktopApplicationContextMenuState extends State<DesktopApplicationContextMenu> {
-  late final Future<DesktopEntry?> _entryFuture;
+  DesktopEntry? _entry;
 
   late bool _useDiscreteGpu;
   late final List<MenuButton> _actionItems;
@@ -409,20 +395,75 @@ class _DesktopApplicationContextMenuState extends State<DesktopApplicationContex
   @override
   void initState() {
     super.initState();
-    if (widget.entryId != null) {
-      _entryFuture = context.read<DesktopEntryProvider>().getEntries().then((entries) {
-        final entry = entries[widget.entryId!];
-        _handleEntry(entry);
-        return entry;
-      });
-    } else if (widget.desktopEntry != null) {
-      _entryFuture = () {
-        _handleEntry(widget.desktopEntry);
-        return Future.value(widget.desktopEntry);
-      }();
-    } else {
-      _entryFuture = Future.value(null);
+
+    if (widget.entryId == null && widget.desktopEntry != null) {
+      _entry = widget.desktopEntry;
+      _handleEntry(_entry);
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant DesktopApplicationContextMenu oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.desktopEntry != widget.desktopEntry &&
+        widget.entryId == null &&
+        widget.desktopEntry != null) {
+      _entry = widget.desktopEntry;
+      _handleEntry(_entry);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.desktopEntry == null && widget.entryId != null) {
+      final entries =
+          context.select<DesktopEntryProvider, Map<String, DesktopEntry>>(
+            (value) => value.entries
+          );
+      _entry = entries[widget.entryId!];
+      _handleEntry(_entry);
+    }
+
+    if (_entry == null) {
+      return widget.child;
+    }
+
+    return ContextMenu(
+      items: [
+        MenuButton(
+          onPressed: (_) => _launch(_entry!),
+          child: Text("Launch"),
+        ),
+        ..._actionItems,
+        if (hasDiscreteGpu()) ... [
+          const MenuDivider(),
+          MenuCheckbox(
+            value: _useDiscreteGpu,
+            onChanged: (_, value) {
+              setState(() => _useDiscreteGpu = value);
+            },
+            autoClose: false,
+            child: const Text('Use Discrete GPU'),
+          ),
+        ],
+        if (widget.onOpenDetails != null || widget.onQuit != null)
+          const MenuDivider(),
+        if (widget.onOpenDetails != null) ... [
+          MenuButton(
+            onPressed: (_) => widget.onOpenDetails!(),
+            child: Text('Open Details'),
+          ),
+        ],
+        if (widget.onQuit != null) ... [
+          MenuButton(
+            onPressed: (_) => widget.onQuit!(),
+            child: Text('Quit'),
+          ),
+        ],
+      ],
+      child: widget.child,
+    );
   }
 
   void _handleEntry(DesktopEntry? entry) {
@@ -435,60 +476,6 @@ class _DesktopApplicationContextMenuState extends State<DesktopApplicationContex
         child: Text(name),
       );
     }).toList() ?? [];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: _entryFuture,
-      builder: (context, snapshot) {
-        DesktopEntry? entry;
-        if (snapshot.connectionState == ConnectionState.done &&
-            snapshot.hasData &&
-            snapshot.data != null) {
-          entry = snapshot.data!;
-        }
-
-        if (entry == null) {
-          return widget.child;
-        }
-
-        return ContextMenu(
-          items: [
-            MenuButton(
-              onPressed: (_) => _launch(entry!),
-              child: Text("Launch"),
-            ),
-            ..._actionItems,
-            const MenuDivider(),
-            if (hasDiscreteGpu()) ... [
-              MenuCheckbox(
-                value: _useDiscreteGpu,
-                onChanged: (_, value) {
-                  setState(() => _useDiscreteGpu = value);
-                },
-                autoClose: false,
-                child: const Text('Use Discrete GPU'),
-              ),
-              const MenuDivider(),
-            ],
-            if (widget.onOpenDetails != null) ... [
-              MenuButton(
-                onPressed: (_) => widget.onOpenDetails!(),
-                child: Text('Open Details'),
-              ),
-            ],
-            if (widget.onQuit != null) ... [
-              MenuButton(
-                onPressed: (_) => widget.onQuit!(),
-                child: Text('Quit'),
-              ),
-            ],
-          ],
-          child: widget.child,
-        );
-      },
-    );
   }
 
   void _launch(DesktopEntry entry, [String action = ""]) {

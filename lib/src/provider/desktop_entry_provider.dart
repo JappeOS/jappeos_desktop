@@ -14,33 +14,45 @@
 //  You should have received a copy of the GNU Affero General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:freedesktop_desktop_entry/freedesktop_desktop_entry.dart';
+// ignore: implementation_imports
+import 'package:freedesktop_desktop_entry/src/utils.dart';
+import 'package:path/path.dart' as p;
+
+import '../lifecycle_handler.dart';
 
 class DesktopEntryProvider extends ChangeNotifier {
   late Future<FreedesktopIconTheme> _themeLoadingFuture;
+  late _InstalledDesktopFilesWatcher _watcher;
   Map<String, DesktopEntry> _entries = {};
-  bool _isDirty = true;
-  bool _entriesReloading = false;
+
+  Map<String, DesktopEntry> get entries => _entries;
 
   DesktopEntryProvider() {
     _themeLoadingFuture = _loadThemes();
+    _watcher = _InstalledDesktopFilesWatcher(
+      onChanged: (entries) {
+        _entries = entries;
+        notifyListeners();
+      },
+      onError: (error, stackTrace) {
+        stderr.writeln('Error watching desktop files: $error\n$stackTrace');
+      },
+    )..start().onError((error, stackTrace) {
+      stderr.writeln('Error starting desktop files watcher: $error\n$stackTrace');
+    });
   }
 
-  Future<Map<String, DesktopEntry>> getEntries() async {
-    if (_isDirty) {
-      _isDirty = false;
-      try {
-        await _reloadEntries();
-      } catch (e) {
-        // TODO: Handle errors, e.g., log them
-      }
-    }
-    return _entries;
+  @override
+  void dispose() {
+    safeAsyncDispose(_watcher.stopListening);
+    super.dispose();
   }
 
   Future<File?> getIcon(DesktopEntry entry) async {
@@ -157,18 +169,281 @@ class DesktopEntryProvider extends ChangeNotifier {
 
     return await FreedesktopIconTheme.loadTheme(theme: selectedTheme ?? "");
   }
+}
 
-  Future<void> _reloadEntries() async {
-    if (_entriesReloading) {
+typedef _DesktopEntriesChanged = void Function(
+  Map<String, DesktopEntry> entries,
+);
+
+typedef _WatcherErrorCallback = void Function(
+  Object error,
+  StackTrace stackTrace,
+);
+
+class _InstalledDesktopFilesWatcher {
+  _InstalledDesktopFilesWatcher({
+    this.onChanged,
+    this.onError,
+    // ignore: unused_element_parameter
+    this.debounceDuration = const Duration(milliseconds: 100),
+  });
+
+  final _DesktopEntriesChanged? onChanged;
+  final _WatcherErrorCallback? onError;
+  final Duration debounceDuration;
+
+  final List<StreamSubscription<FileSystemEvent>> _subscriptions = [];
+
+  Timer? _refreshTimer;
+
+  Future<void>? _startFuture;
+  Future<void>? _stopFuture;
+  Future<void>? _refreshFuture;
+
+  bool _stopRequested = false;
+  bool _refreshRequested = false;
+
+  Map<String, DesktopEntry> desktopEntries = {};
+
+  // MARK: - Public lifecycle
+
+  Future<void> start() {
+    if (_stopRequested) {
+      return Future<void>.error(
+        StateError('Cannot start a watcher after stopping it.'),
+      );
+    }
+
+    // Repeated start() calls share the same startup operation.
+    return _startFuture ??= _startImpl();
+  }
+
+  Future<void> stopListening() {
+    // Repeated stopListening() calls share the same shutdown operation.
+    return _stopFuture ??= _stopImpl();
+  }
+
+  // MARK: - Startup
+
+  Future<void> _startImpl() async {
+    try {
+      final watchedPaths = <String>{};
+
+      // Use the same utility methods as parseAllInstalledDesktopFiles().
+      // We use the same methods as freedesktop_desktop_entry to find the
+      // directories, but we watch them for changes instead of reading them
+      // directly.
+      for (final Directory dir in whereExists(
+        getApplicationDirectories().map(Directory.new),
+      )) {
+        if (_stopRequested) break;
+
+        final dirPath = p.normalize(p.absolute(dir.path));
+
+        if (!watchedPaths.add(dirPath)) {
+          continue;
+        }
+
+        final subscription = Directory(dirPath)
+            .watch(recursive: false)
+            .listen(
+          (event) => _handleFileSystemEvent(dirPath, event),
+          onError: (Object error, StackTrace stackTrace) {
+            if (!_stopRequested) {
+              _reportError(error, stackTrace);
+            }
+          },
+        );
+
+        _subscriptions.add(subscription);
+      }
+
+      // Stop may have been requested while startup was in progress.
+      if (_stopRequested) return;
+
+      // Load initial state and notify listeners.
+      await _refreshEntries();
+    } catch (_) {
+      // A failed startup must not leave subscriptions running.
+      _stopRequested = true;
+
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+
+      await _cancelSubscriptions();
+
+      rethrow;
+    }
+  }
+
+  // MARK: - Filesystem events
+
+  void _handleFileSystemEvent(
+    String dirPath,
+    FileSystemEvent event,
+  ) {
+    if (_stopRequested || event.isDirectory) return;
+
+    // A move can involve a .desktop file at either its source or
+    // destination, so consider both paths where available.
+    final paths = <String>[event.path];
+
+    if (event is FileSystemMoveEvent && event.destination != null) {
+      paths.add(event.destination!);
+    }
+
+    final relevant = paths.any(
+      (path) => _isDirectDesktopFile(dirPath, path),
+    );
+
+    if (relevant) {
+      _scheduleRefresh();
+    }
+  }
+
+  bool _isDirectDesktopFile(String dirPath, String eventPath) {
+    final normalizedPath = p.isAbsolute(eventPath)
+        ? p.normalize(eventPath)
+        : p.normalize(p.join(dirPath, eventPath));
+
+    return p.dirname(normalizedPath) == dirPath &&
+        normalizedPath.endsWith('.desktop');
+  }
+
+  void _scheduleRefresh() {
+    if (_stopRequested) return;
+
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer(debounceDuration, () {
+      _refreshTimer = null;
+      if (!_stopRequested) {
+        // The operation is not abandoned: _refreshEntries tracks it,
+        // and stopListening() waits for it to finish.
+        unawaited(_refreshEntries());
+      }
+    });
+  }
+
+  // MARK: - Refreshing
+
+  Future<void> _refreshEntries() {
+    if (_stopRequested) {
+      return Future<void>.value();
+    }
+
+    _refreshRequested = true;
+
+    final currentRefresh = _refreshFuture;
+
+    if (currentRefresh != null) {
+      // A refresh is already running. Request another pass after it
+      // finishes instead of running overlapping parses.
+      return currentRefresh;
+    }
+
+    final completer = Completer<void>();
+
+    _refreshFuture = completer.future;
+
+    unawaited(_drainRefreshes(completer));
+
+    return completer.future;
+  }
+
+  Future<void> _drainRefreshes(Completer<void> completer) async {
+    try {
+      while (_refreshRequested && !_stopRequested) {
+        _refreshRequested = false;
+
+        try {
+          final parsedEntries = await parseAllInstalledDesktopFiles();
+
+          // Parsing cannot necessarily be cancelled, but its result
+          // must not be published after shutdown has begun.
+          if (_stopRequested) break;
+
+          desktopEntries = parsedEntries;
+
+          onChanged?.call(
+            Map<String, DesktopEntry>.unmodifiable(desktopEntries),
+          );
+        } catch (error, stackTrace) {
+          if (!_stopRequested) {
+            _reportError(error, stackTrace);
+          }
+        }
+      }
+    } finally {
+      if (identical(_refreshFuture, completer.future)) {
+        _refreshFuture = null;
+      }
+
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+    }
+  }
+
+  // MARK: - Shutdown
+
+  Future<void> _stopImpl() async {
+    // From this point onward, event handlers and refreshes cannot initiate
+    // further useful work.
+    _stopRequested = true;
+
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+
+    // Startup might still be awaiting the initial parse. Wait for it.
+    final startFuture = _startFuture;
+    if (startFuture != null) {
+      try {
+        await startFuture;
+      } catch (_) {
+        // Startup errors are reported by start() to its caller.
+        // Shutdown must still complete its cleanup.
+      }
+    }
+
+    await _cancelSubscriptions();
+
+    // No new refresh can start after _stopRequested was set. Wait for
+    // any refresh already running to finish.
+    await _refreshFuture;
+  }
+
+  Future<void> _cancelSubscriptions() async {
+    final subscriptions =
+        List<StreamSubscription<FileSystemEvent>>.of(_subscriptions);
+
+    _subscriptions.clear();
+
+    await Future.wait(
+      subscriptions.map((subscription) async {
+        try {
+          await subscription.cancel();
+        } catch (error, stackTrace) {
+          _reportError(error, stackTrace);
+        }
+      }),
+    );
+  }
+
+  void _reportError(Object error, StackTrace stackTrace) {
+    final handler = onError;
+
+    if (handler == null) {
+      Zone.current.handleUncaughtError(error, stackTrace);
       return;
     }
-    _entriesReloading = true;
+
     try {
-      final entries = await parseAllInstalledDesktopFiles();
-      _entries = entries;
-      notifyListeners();
-    } finally {
-      _entriesReloading = false;
+      handler(error, stackTrace);
+    } catch (handlerError, handlerStackTrace) {
+      Zone.current.handleUncaughtError(
+        handlerError,
+        handlerStackTrace,
+      );
     }
   }
 }
