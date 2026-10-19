@@ -37,6 +37,7 @@ import 'desktop_menu_manager/menus/switcher_menu.dart';
 import 'desktop_overlay_manager/desktop_osd_layer.dart';
 import 'desktop_overlay_manager/overlays/audio_input_overlay.dart';
 import 'desktop_overlay_manager/overlays/audio_output_overlay.dart';
+import 'lifecycle_handler.dart';
 import 'provider/auth_provider.dart';
 import 'provider/desktop_entry_provider.dart';
 
@@ -93,64 +94,66 @@ class DesktopState extends State<Desktop> {
 
   @override
   Widget build(BuildContext context) {
-    return ShellApp(
-      title: 'jappeos_desktop',
-      debugShowCheckedModeBanner: false,
-      wmKey: _wmControllerKey,
-      providers: [
-        ListenableProvider<AuthProvider>(create: (_) => AuthProvider()),
-        ListenableProvider<DesktopEntryProvider>(
-            create: (_) => DesktopEntryProvider(), lazy: false),
-      ],
-      theme: _getTheme(false),
-      darkTheme: _getTheme(true),
-      shortcuts: _shortcuts,
-      actions: _actions,
-      keybinds: _keybinds,
-      wrapBuilder: (_, p1) => DesktopKeybinds(
-        registry: _menuRegistry,
-        menuController: _menuController,
-        child: p1,
-      ),
-      monitorLayoutBuilder: (p0, p1) {
-        for (int i = 0; i < p1.length; i++) {
-          final p = p1[i];
-          if (p.isPrimary) {
-            p1[i] = p.copyWith(
-              margin: const EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT),
-            );
-            break;
+    return ApplicationLifecycleObserver(
+      child: ShellApp(
+        title: 'jappeos_desktop',
+        debugShowCheckedModeBanner: false,
+        wmKey: _wmControllerKey,
+        providers: [
+          ListenableProvider<AuthProvider>(create: (_) => AuthProvider()),
+          ListenableProvider<DesktopEntryProvider>(
+              create: (_) => DesktopEntryProvider(), lazy: false),
+        ],
+        theme: _getTheme(false),
+        darkTheme: _getTheme(true),
+        shortcuts: _shortcuts,
+        actions: _actions,
+        keybinds: _keybinds,
+        wrapBuilder: (_, p1) => DesktopKeybinds(
+          registry: _menuRegistry,
+          menuController: _menuController,
+          child: p1,
+        ),
+        monitorLayoutBuilder: (p0, p1) {
+          for (int i = 0; i < p1.length; i++) {
+            final p = p1[i];
+            if (p.isPrimary) {
+              p1[i] = p.copyWith(
+                margin: const EdgeInsets.only(top: DSKTP_UI_LAYER_TOPBAR_HEIGHT),
+              );
+              break;
+            }
           }
-        }
-        return p1;
-      },
-      monitorBuilder: (context, monitor) => Consumer<AuthProvider>(
-        builder: (context, auth, _) {
-          if (!auth.isLoggedIn) {
-            return _buildLoginScreen(auth); // TODO: Handle multiple monitors
-          }
-          return ContextMenu(
-            items: _buildContextMenuItems(),
-            child: Container(
-              width: monitor.bounds.width.toDouble(),
-              height: monitor.bounds.height.toDouble(),
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(DSKTP_UI_LAYER_BACKGROUND_WALLPAPER_DIR),
-                  fit: BoxFit.cover,
+          return p1;
+        },
+        monitorBuilder: (context, monitor) => Consumer<AuthProvider>(
+          builder: (context, auth, _) {
+            if (!auth.isLoggedIn) {
+              return _buildLoginScreen(auth); // TODO: Handle multiple monitors
+            }
+            return ContextMenu(
+              items: _buildContextMenuItems(),
+              child: Container(
+                width: monitor.bounds.width.toDouble(),
+                height: monitor.bounds.height.toDouble(),
+                decoration: const BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(DSKTP_UI_LAYER_BACKGROUND_WALLPAPER_DIR),
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
+        monitorOverlayBuilder: (context, monitor) => monitor.isPrimary
+            ? Consumer<AuthProvider>(
+                builder: (context, auth, _) => Stack(
+                  children: _buildDesktopOverlayLayers(context, auth, monitor),
+                ),
+              )
+            : const SizedBox.shrink(),
       ),
-      monitorOverlayBuilder: (context, monitor) => monitor.isPrimary
-          ? Consumer<AuthProvider>(
-              builder: (context, auth, _) => Stack(
-                children: _buildDesktopOverlayLayers(context, auth, monitor),
-              ),
-            )
-          : const SizedBox.shrink(),
     );
   }
 
