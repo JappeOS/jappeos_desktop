@@ -433,6 +433,7 @@ class _DesktopDockState extends State<DesktopDock> {
       alignment: Alignment.bottomCenter,
       widthFactor: 1.0,
       child: MouseRegion(
+        hitTestBehavior: HitTestBehavior.translucent,
         onEnter: (event) {
           _hoveringDock = true;
           _refreshDockVisibility();
@@ -470,10 +471,13 @@ class _DesktopDockState extends State<DesktopDock> {
                         key: _dockShownKey,
                         increasedBorderRadius: true,
                         padding: EdgeInsets.all(pad),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          spacing: pad,
-                          children: dockWidgets,
+                        child: MouseRegion(
+                          opaque: true,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            spacing: pad,
+                            children: dockWidgets,
+                          ),
                         ),
                       )
                     : SizedBox(
