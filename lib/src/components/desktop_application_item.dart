@@ -223,8 +223,8 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
       width: _width,
       height: _height,
       child: RepaintBoundary(
-        child: Tooltip(
-          tooltip: (_) => TooltipContainer(child: Text(title)),
+        child: _buildMaybeTooltip(
+          title: title,
           child: MouseRegion(
             onEnter: (p0) => setState(() => _isHovered = true),
             onExit: (p0) => setState(() => _isHovered = false),
@@ -278,9 +278,11 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
                         if (widget.showTitle)
                           Text(
                             title,
-                            overflow: TextOverflow.ellipsis,
+                            overflow: _isHovered
+                                ? TextOverflow.visible
+                                : TextOverflow.ellipsis,
                             textAlign: TextAlign.center,
-                            maxLines: 1,
+                            maxLines: _isHovered ? 3 : 1,
                           ).small(),
                       ],
                     ),
@@ -331,7 +333,7 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
       children: [
         child,
         Align(
-          alignment: Alignment(0.0, 0.9),
+          alignment: const Alignment(0.0, 0.9),
           child: SizedBox(
             width: isExpanded ? 27 * theme.scaling : 4 * theme.scaling,
             height: 4 * theme.scaling,
@@ -344,6 +346,18 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildMaybeTooltip({
+    required String title,
+    required Widget child,
+  }) {
+    if (widget.showTitle) return child;
+    return Tooltip(
+      tooltip: (_) => TooltipContainer(child: Text(title)),
+      alignment: const Alignment(0.0, -1.15),
+      child: child,
     );
   }
 }
