@@ -21,10 +21,10 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:freedesktop_desktop_entry/freedesktop_desktop_entry.dart';
 import 'package:fuzzywuzzy/fuzzywuzzy.dart';
-import 'package:jappeos_desktop/src/components/desktop_application_item.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+import '../../components/desktop_application_item.dart';
 import '../../components/desktop_container.dart';
 import '../../provider/desktop_entry_provider.dart';
 import '../desktop_menu_controller.dart';

@@ -19,7 +19,6 @@ import 'package:flutter/services.dart';
 import 'package:jdwm/jdwm.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-// TODO: Outgoing animation
 class DesktopMenuController extends ChangeNotifier {
   static const kMenuAnimationDuration = Duration(milliseconds: 100);
 
@@ -114,6 +113,9 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
   late final Animation<double> _scale;
   late final Animation<Offset> _slide;
 
+  // Keep the displayed menu alive independently of the controller while exiting.
+  DesktopMenu? _menu;
+  Offset? _anchorPosition;
   Offset? _position;
   Size _menuSize = Size.zero;
 
@@ -124,7 +126,7 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
     _animationController = AnimationController(
       vsync: this,
       duration: DesktopMenuController.kMenuAnimationDuration,
-    );
+    )..addStatusListener(_onAnimationStatusChanged);
 
     _fade = CurvedAnimation(
       parent: _animationController,
@@ -139,6 +141,17 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
     ).animate(_fade);
 
     widget.controller.addListener(_onControllerChanged);
+    _showCurrentMenu();
+  }
+
+  @override
+  void didUpdateWidget(covariant DesktopMenuWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onControllerChanged);
+      widget.controller.addListener(_onControllerChanged);
+      _onControllerChanged();
+    }
   }
 
   @override
@@ -149,20 +162,36 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
   }
 
   void _onControllerChanged() {
-    if (widget.controller.currentMenu != null) {
-      _animationController.forward(from: 0);
-    } else {
-      _animationController.reverse();
-    }
     setState(() {
-      _position = null;
-      _menuSize = Size.zero;
+      if (_menu == null || _animationController.isDismissed) {
+        _showCurrentMenu();
+      } else if (identical(_menu, widget.controller.currentMenu)) {
+        _animationController.forward();
+      } else {
+        _animationController.reverse();
+      }
     });
+  }
+
+  void _onAnimationStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed) {
+      setState(_showCurrentMenu);
+    }
+  }
+
+  void _showCurrentMenu() {
+    _menu = widget.controller.currentMenu;
+    _anchorPosition = widget.controller.anchorPosition;
+    _position = null;
+    _menuSize = Size.zero;
+    if (_menu != null) {
+      _animationController.forward(from: 0);
+    }
   }
 
   void _computePosition(DesktopMenu menu) {
     final bounds = widget.monitor.usableBounds;
-    final anchor = widget.controller.anchorPosition;
+    final anchor = _anchorPosition;
 
     const double pad = 8;
 
@@ -199,70 +228,80 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
 
   @override
   Widget build(BuildContext context) {
-    final menu = widget.controller.currentMenu;
+    final menu = _menu;
     if (menu == null) return const SizedBox.shrink();
 
-    return AnimatedBuilder(
-      animation: _animationController,
-      child: KeyedSubtree(
-        key: ValueKey(menu), // preserves state
-        child: RepaintBoundary(child: menu),
-      ),
-      builder: (context, child) {
-        return Stack(
-          children: [
-            /// Positioned menu
-            Builder(
-              builder: (context) {
-                return Positioned(
-                  left: _position?.dx ?? 0,
-                  top: _position?.dy ?? 0,
-                  child: TapRegion(
-                    onTapOutside: (_) => widget.controller.closeMenu(),
-                    behavior: HitTestBehavior.translucent,
-                    child: SlideTransition(
-                      position: _slide,
-                      child: ScaleTransition(
-                        scale: _scale,
-                        child: FadeTransition(
-                          opacity: _fade,
-                          child: Builder(
-                            builder: (context) {
-                              final capturedMenu = menu;
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                if (!mounted) return;
-                                final box = context.findRenderObject() as RenderBox?;
-                                if (box == null) return;
-                                final newSize = box.size;
-                                if (newSize != _menuSize) {
-                                  _menuSize = newSize;
-                                  _computePosition(capturedMenu);
-                                  setState(() {});
+    return IgnorePointer(
+      ignoring: !identical(menu, widget.controller.currentMenu),
+      child: AnimatedBuilder(
+        animation: _animationController,
+        child: KeyedSubtree(
+          key: ValueKey(menu), // preserves state
+          child: RepaintBoundary(child: menu),
+        ),
+        builder: (context, child) {
+          return Stack(
+            children: [
+              /// Positioned menu
+              Builder(
+                builder: (context) {
+                  return Positioned(
+                    left: _position?.dx ?? 0,
+                    top: _position?.dy ?? 0,
+                    child: TapRegion(
+                      enabled: identical(menu, widget.controller.currentMenu),
+                      onTapOutside: (_) => widget.controller.closeMenu(),
+                      behavior: HitTestBehavior.translucent,
+                      child: SlideTransition(
+                        position: _slide,
+                        child: ScaleTransition(
+                          scale: _scale,
+                          child: FadeTransition(
+                            opacity: _fade,
+                            child: Builder(
+                              builder: (context) {
+                                final capturedMenu = menu;
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  if (!mounted ||
+                                      !context.mounted ||
+                                      !identical(capturedMenu, _menu)) {
+                                    return;
+                                  }
+                                  final box =
+                                      context.findRenderObject() as RenderBox?;
+                                  if (box == null) return;
+                                  final newSize = box.size;
+                                  if (newSize != _menuSize) {
+                                    _menuSize = newSize;
+                                    _computePosition(capturedMenu);
+                                    setState(() {});
+                                  }
+                                });
+
+                                if (menu is FullscreenDesktopMenu) {
+                                  final bounds = widget.monitor.usableBounds;
+                                  return SizedBox(
+                                    width: bounds.width,
+                                    height: bounds.height,
+                                    child: child!,
+                                  );
                                 }
-                              });
 
-                              if (menu is FullscreenDesktopMenu) {
-                                final bounds = widget.monitor.usableBounds;
-                                return SizedBox(
-                                  width: bounds.width,
-                                  height: bounds.height,
-                                  child: child!,
-                                );
-                              }
-
-                              return child!;
-                            },
+                                return child!;
+                              },
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
-          ],
-        );
-      },
+                  );
+                },
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
