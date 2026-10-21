@@ -167,7 +167,10 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
       title: _title,
       onTap: widget.onPressed ??
           (entry != null
-              ? () => desktopEntryProvider.launchDesktopEntry(entry)
+              ? () => desktopEntryProvider.launchDesktopEntry(
+                  entry,
+                  context.read<GpuInfoProvider>(),
+                )
               : null),
       onSecondaryTap: widget.onPressedSecondary,
     );
@@ -500,13 +503,10 @@ class _DesktopApplicationContextMenuState extends State<DesktopApplicationContex
   }
 
   void _launch(DesktopEntry entry, [String action = ""]) {
-    final gpuInfo = context.read<GpuInfoProvider>();
     context.read<DesktopEntryProvider>().launchDesktopEntry(
       entry,
+      context.read<GpuInfoProvider>(),
       action: action,
-      environment: gpuInfo.getGraphicsEnvironmentVariables(
-        gpuInfo.getUsesDiscreteGpu(entry)
-      ),
     );
   }
 

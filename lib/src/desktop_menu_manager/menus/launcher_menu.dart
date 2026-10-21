@@ -27,6 +27,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../../components/desktop_application_item.dart';
 import '../../components/desktop_container.dart';
 import '../../provider/desktop_entry_provider.dart';
+import '../../provider/gpu_info_provider.dart';
 import '../desktop_menu_controller.dart';
 import '../desktop_menu_entry.dart';
 
@@ -344,7 +345,10 @@ class _LauncherMenuState extends State<LauncherMenu> {
   }
 
   void _onDesktopMenuPressed(DesktopEntry entry) {
-    context.read<DesktopEntryProvider>().launchDesktopEntry(entry);
+    context.read<DesktopEntryProvider>().launchDesktopEntry(
+      entry,
+      context.read<GpuInfoProvider>(),
+    );
     widget.controller.closeMenu();
   }
 

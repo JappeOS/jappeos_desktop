@@ -26,6 +26,7 @@ import 'package:freedesktop_desktop_entry/src/utils.dart';
 import 'package:path/path.dart' as p;
 
 import '../lifecycle_handler.dart';
+import 'gpu_info_provider.dart';
 
 class DesktopEntryProvider extends ChangeNotifier {
   late Future<FreedesktopIconTheme> _themeLoadingFuture;
@@ -92,7 +93,8 @@ class DesktopEntryProvider extends ChangeNotifier {
   }
 
   Future<bool> launchDesktopEntry(
-    DesktopEntry desktopEntry, {
+    DesktopEntry desktopEntry,
+    GpuInfoProvider gpuInfoProvider, {
     String action = "",
     Map<String, String> environment = const {}}
   ) async {
@@ -126,7 +128,12 @@ class DesktopEntryProvider extends ChangeNotifier {
     return _launchApplication(
       command: exec,
       terminal: terminal,
-      environment: environment
+      environment: {
+        ...environment,
+        ...gpuInfoProvider.getGraphicsEnvironmentVariables(
+          gpuInfoProvider.getUsesDiscreteGpu(desktopEntry),
+        ),
+      },
     );
   }
 
@@ -290,7 +297,7 @@ class InstalledDesktopFilesWatcher {
         _reportError(error, stackTrace);
       }
     }
-    
+
     for (final path in _subscriptions.keys.toList()) {
       if (!desiredPaths.contains(path)) {
         await _subscriptions.remove(path)!.cancel();
