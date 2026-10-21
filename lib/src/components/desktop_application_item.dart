@@ -368,6 +368,10 @@ class DesktopApplicationContextMenu extends StatefulWidget {
   final Widget child;
   final void Function()? onQuit;
   final void Function()? onOpenDetails;
+  /// Gets called after an action is performed, such as launching the
+  /// application, opening details, or quitting. This can be used to close
+  /// the application launcher, for example.
+  final void Function()? onActionPerformed;
 
   const DesktopApplicationContextMenu({
     super.key,
@@ -376,6 +380,7 @@ class DesktopApplicationContextMenu extends StatefulWidget {
     required this.child,
     this.onQuit,
     this.onOpenDetails,
+    this.onActionPerformed,
   }) : assert((entryId != null) ^ (desktopEntry != null),
           "Either entryId or desktopEntry must be provided.");
 
@@ -385,12 +390,14 @@ class DesktopApplicationContextMenu extends StatefulWidget {
     required Widget child,
     void Function()? onQuit,
     void Function()? onOpenDetails,
+    void Function()? onActionPerformed,
   }) {
     return DesktopApplicationContextMenu(
       key: key,
       desktopEntry: entry,
       onQuit: onQuit,
       onOpenDetails: onOpenDetails,
+      onActionPerformed: onActionPerformed,
       child: child,
     );
   }
@@ -402,8 +409,6 @@ class DesktopApplicationContextMenu extends StatefulWidget {
 
 class _DesktopApplicationContextMenuState extends State<DesktopApplicationContextMenu> {
   DesktopEntry? _entry;
-
-  bool _useDiscreteGpu = false;
   List<MenuButton> _actionItems = [];
 
   @override
@@ -443,19 +448,20 @@ class _DesktopApplicationContextMenuState extends State<DesktopApplicationContex
       return widget.child;
     }
 
+    final gpuInfo = context.watch<GpuInfoProvider>();
     return ContextMenu(
       items: [
         MenuButton(
-          onPressed: (_) => _launch(_entry!),
+          onPressed: (_) => _wrapActionCallback(() => _launch(_entry!)),
           child: Text("Launch"),
         ),
         ..._actionItems,
-        if (context.watch<GpuInfoProvider>().hasDiscreteGpu) ... [
+        if (gpuInfo.hasDiscreteGpu) ... [
           const MenuDivider(),
           MenuCheckbox(
-            value: _useDiscreteGpu,
+            value: gpuInfo.getUsesDiscreteGpu(_entry!),
             onChanged: (_, value) {
-              setState(() => _useDiscreteGpu = value);
+              setState(() => gpuInfo.setUsesDiscreteGpu(_entry!, value));
             },
             autoClose: false,
             child: const Text('Use Discrete GPU'),
@@ -465,13 +471,13 @@ class _DesktopApplicationContextMenuState extends State<DesktopApplicationContex
           const MenuDivider(),
         if (widget.onOpenDetails != null) ... [
           MenuButton(
-            onPressed: (_) => widget.onOpenDetails!(),
+            onPressed: (_) => _wrapActionCallback(() => widget.onOpenDetails!()),
             child: Text('Open Details'),
           ),
         ],
         if (widget.onQuit != null) ... [
           MenuButton(
-            onPressed: (_) => widget.onQuit!(),
+            onPressed: (_) => _wrapActionCallback(() => widget.onQuit!()),
             child: Text('Quit'),
           ),
         ],
@@ -481,24 +487,34 @@ class _DesktopApplicationContextMenuState extends State<DesktopApplicationContex
   }
 
   void _handleEntry(DesktopEntry? entry) {
-    _useDiscreteGpu = entry?.entries
-        [DesktopEntryKey.prefersNonDefaultGpu.string]?.value.getBoolean() ?? false;
+    /*_useDiscreteGpu = entry?.entries
+        [DesktopEntryKey.prefersNonDefaultGpu.string]?.value.getBoolean() ?? false;*/
+        // TODO: Implement a proper way to store if the entry prefers a non-default GPU in the provider.
     _actionItems = entry?.actions.entries.map((action) {
       final name = action.value[DesktopEntryKey.name.string]?.value ?? action.key;
       return MenuButton(
-        onPressed: (_) => _launch(entry, action.key),
+        onPressed: (_) => _wrapActionCallback(() => _launch(entry, action.key)),
         child: Text(name),
       );
     }).toList() ?? [];
   }
 
   void _launch(DesktopEntry entry, [String action = ""]) {
+    final gpuInfo = context.read<GpuInfoProvider>();
     context.read<DesktopEntryProvider>().launchDesktopEntry(
       entry,
       action: action,
-      environment: context
-          .read<GpuInfoProvider>()
-          .getGraphicsEnvironmentVariables(_useDiscreteGpu),
+      environment: gpuInfo.getGraphicsEnvironmentVariables(
+        gpuInfo.getUsesDiscreteGpu(entry)
+      ),
     );
+  }
+
+  void _wrapActionCallback(void Function() callback) {
+    try {
+      callback();
+    } finally {
+      widget.onActionPerformed?.call();
+    }
   }
 }

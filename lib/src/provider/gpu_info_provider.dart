@@ -17,6 +17,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:freedesktop_desktop_entry/freedesktop_desktop_entry.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../lifecycle_handler.dart';
@@ -32,6 +33,8 @@ class GpuInfoProvider extends ChangeNotifier {
 
   int _graphicsCardCount = 0;
   bool _hasDiscreteGpu = false;
+
+  final Set<DesktopEntry> _discreteGpuEntries = {};
 
   int get graphicsCardCount => _graphicsCardCount;
   bool get hasDiscreteGpu => _hasDiscreteGpu;
@@ -57,6 +60,19 @@ class GpuInfoProvider extends ChangeNotifier {
       }
     });
     super.dispose();
+  }
+
+  bool getUsesDiscreteGpu(DesktopEntry entry) {
+    return _discreteGpuEntries.contains(entry);
+  }
+
+  void setUsesDiscreteGpu(DesktopEntry entry, bool useDiscreteGpu) {
+    if (useDiscreteGpu) {
+      _discreteGpuEntries.add(entry);
+    } else {
+      _discreteGpuEntries.remove(entry);
+    }
+    notifyListeners();
   }
 
   Map<String, String> getGraphicsEnvironmentVariables(bool useDiscreteGpu) {

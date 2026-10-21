@@ -92,6 +92,24 @@ abstract class CenteredDesktopMenu extends DesktopMenu {
   CenteredDesktopMenu({super.key});
 }
 
+// Popovers capture inherited themes when moving into the overlay. Carry the
+// desktop menu's tap group with them, including through nested popovers.
+class _DesktopMenuTapGroup extends InheritedTheme {
+  final Object groupId;
+
+  const _DesktopMenuTapGroup({required this.groupId, required super.child});
+
+  @override
+  Widget wrap(BuildContext context, Widget child) => _DesktopMenuTapGroup(
+        groupId: groupId,
+        child: TapRegion(groupId: groupId, child: child),
+      );
+
+  @override
+  bool updateShouldNotify(_DesktopMenuTapGroup oldWidget) =>
+      groupId != oldWidget.groupId;
+}
+
 class DesktopMenuWidget extends StatefulWidget {
   final DesktopMenuController controller;
   final MonitorConfig monitor;
@@ -237,7 +255,10 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
         animation: _animationController,
         child: KeyedSubtree(
           key: ValueKey(menu), // preserves state
-          child: RepaintBoundary(child: menu),
+          child: _DesktopMenuTapGroup(
+            groupId: menu,
+            child: RepaintBoundary(child: menu),
+          ),
         ),
         builder: (context, child) {
           return Stack(
@@ -249,6 +270,7 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
                     left: _position?.dx ?? 0,
                     top: _position?.dy ?? 0,
                     child: TapRegion(
+                      groupId: menu,
                       enabled: identical(menu, widget.controller.currentMenu),
                       onTapOutside: (_) => widget.controller.closeMenu(),
                       behavior: HitTestBehavior.translucent,

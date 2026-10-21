@@ -268,6 +268,7 @@ class _LauncherMenuState extends State<LauncherMenu> {
                             child: DesktopApplicationContextMenu.fromEntry(
                               key: ValueKey(e.key),
                               entry: e.value,
+                              onActionPerformed: () => widget.controller.closeMenu(),
                               child: DesktopApplicationItem.iconWithTitle(
                                 key: ValueKey(e.key),
                                 entry: e.key,
@@ -422,6 +423,7 @@ class _LauncherMenuState extends State<LauncherMenu> {
 class _HorizontalChipScroller extends StatefulWidget {
   final List<Widget> items;
 
+  // ignore: unused_element_parameter
   const _HorizontalChipScroller({super.key, required this.items});
 
   @override

@@ -1,9 +1,15 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jappeos_desktop/src/desktop_menu_manager/desktop_menu_controller.dart';
 import 'package:jdwm/jdwm.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart' as shadcn;
 
 class _Menu extends DesktopMenu {
+  final Widget child;
+
+  _Menu({this.child = const SizedBox(width: 100, height: 100)});
+
   @override
   State<_Menu> createState() => _MenuState();
 }
@@ -12,7 +18,7 @@ class _OtherMenu extends _Menu {}
 
 class _MenuState extends State<_Menu> {
   @override
-  Widget build(BuildContext context) => const SizedBox(width: 100, height: 100);
+  Widget build(BuildContext context) => widget.child;
 }
 
 Future<void> _mount(
@@ -34,6 +40,58 @@ Future<void> _mount(
 }
 
 void main() {
+  testWidgets(
+      'context menu checkbox keeps both menus open, outside closes them',
+      (tester) async {
+    final controller = DesktopMenuController();
+    addTearDown(controller.dispose);
+    var checked = false;
+    final menu = _Menu(
+      child: shadcn.ContextMenu(
+        items: [
+          shadcn.MenuCheckbox(
+            value: false,
+            autoClose: false,
+            onChanged: (_, value) => checked = value,
+            child: const Text('Use Discrete GPU'),
+          ),
+        ],
+        child: const SizedBox(width: 100, height: 100),
+      ),
+    );
+    await tester.pumpWidget(shadcn.ShadcnApp(
+      home: SizedBox.expand(
+        child: DesktopMenuWidget(
+          controller: controller,
+          monitor: const MonitorConfig(
+            id: 'test',
+            bounds: Rect.fromLTWH(0, 0, 800, 600),
+          ),
+        ),
+      ),
+    ));
+    controller.openMenu(menu, position: const Offset(100, 100));
+    await tester.pumpAndSettle();
+    await tester.tapAt(const Offset(140, 100), buttons: kSecondaryMouseButton);
+    await tester.pumpAndSettle();
+
+    final checkbox = find.text('Use Discrete GPU');
+    expect(checkbox, findsOneWidget);
+    expect(tester.getCenter(checkbox).dx, greaterThan(150));
+    await tester.tap(checkbox);
+    await tester.pumpAndSettle();
+    expect(checked, isTrue);
+    expect(controller.currentMenu, same(menu));
+    expect(find.byWidget(menu), findsOneWidget);
+    expect(checkbox, findsOneWidget);
+
+    await tester.tapAt(const Offset(700, 500));
+    await tester.pumpAndSettle();
+    expect(controller.currentMenu, isNull);
+    expect(find.byWidget(menu), findsNothing);
+    expect(checkbox, findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
   testWidgets('closing retains menu state and anchor until exit completes',
       (tester) async {
     final controller = DesktopMenuController();
