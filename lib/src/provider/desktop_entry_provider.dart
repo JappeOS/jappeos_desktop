@@ -29,14 +29,14 @@ import '../lifecycle_handler.dart';
 
 class DesktopEntryProvider extends ChangeNotifier {
   late Future<FreedesktopIconTheme> _themeLoadingFuture;
-  late _InstalledDesktopFilesWatcher _watcher;
+  late InstalledDesktopFilesWatcher _watcher;
   Map<String, DesktopEntry> _entries = {};
 
   Map<String, DesktopEntry> get entries => _entries;
 
   DesktopEntryProvider() {
     _themeLoadingFuture = _loadThemes();
-    _watcher = _InstalledDesktopFilesWatcher(
+    _watcher = InstalledDesktopFilesWatcher(
       onChanged: (entries) {
         _entries = entries;
         notifyListeners();
@@ -171,28 +171,38 @@ class DesktopEntryProvider extends ChangeNotifier {
   }
 }
 
-typedef _DesktopEntriesChanged = void Function(
+typedef DesktopEntriesChanged = void Function(
   Map<String, DesktopEntry> entries,
 );
 
-typedef _WatcherErrorCallback = void Function(
+typedef DesktopFilesWatcherErrorCallback = void Function(
   Object error,
   StackTrace stackTrace,
 );
 
-class _InstalledDesktopFilesWatcher {
-  _InstalledDesktopFilesWatcher({
+/// Watches installed desktop entries, including application directories created
+/// after startup. Paths and loading can be supplied for isolated filesystem tests.
+class InstalledDesktopFilesWatcher {
+  InstalledDesktopFilesWatcher({
     this.onChanged,
     this.onError,
-    // ignore: unused_element_parameter
+    this.applicationDirectories,
+    this.loadEntries = parseAllInstalledDesktopFiles,
     this.debounceDuration = const Duration(milliseconds: 100),
   });
 
-  final _DesktopEntriesChanged? onChanged;
-  final _WatcherErrorCallback? onError;
+  final DesktopEntriesChanged? onChanged;
+  final DesktopFilesWatcherErrorCallback? onError;
   final Duration debounceDuration;
+  final Iterable<String>? applicationDirectories;
+  final Future<Map<String, DesktopEntry>> Function() loadEntries;
 
-  final List<StreamSubscription<FileSystemEvent>> _subscriptions = [];
+  late final Set<String> _applicationPaths =
+      (applicationDirectories ?? getApplicationDirectories())
+          .map((path) => p.normalize(p.absolute(path)))
+          .toSet();
+
+  final Map<String, StreamSubscription<FileSystemEvent>> _subscriptions = {};
 
   Timer? _refreshTimer;
 
@@ -227,36 +237,7 @@ class _InstalledDesktopFilesWatcher {
 
   Future<void> _startImpl() async {
     try {
-      final watchedPaths = <String>{};
-
-      // Use the same utility methods as parseAllInstalledDesktopFiles().
-      // We use the same methods as freedesktop_desktop_entry to find the
-      // directories, but we watch them for changes instead of reading them
-      // directly.
-      for (final Directory dir in whereExists(
-        getApplicationDirectories().map(Directory.new),
-      )) {
-        if (_stopRequested) break;
-
-        final dirPath = p.normalize(p.absolute(dir.path));
-
-        if (!watchedPaths.add(dirPath)) {
-          continue;
-        }
-
-        final subscription = Directory(dirPath)
-            .watch(recursive: false)
-            .listen(
-          (event) => _handleFileSystemEvent(dirPath, event),
-          onError: (Object error, StackTrace stackTrace) {
-            if (!_stopRequested) {
-              _reportError(error, stackTrace);
-            }
-          },
-        );
-
-        _subscriptions.add(subscription);
-      }
+      await _syncSubscriptions();
 
       // Stop may have been requested while startup was in progress.
       if (_stopRequested) return;
@@ -276,13 +257,54 @@ class _InstalledDesktopFilesWatcher {
     }
   }
 
+  // Watch the nearest existing parent as well as the application directory.
+  // This discovers directories created after login and survives replacement.
+  Future<void> _syncSubscriptions() async {
+    final desiredPaths = <String>{};
+    for (final path in _applicationPaths) {
+      var parent = p.dirname(path);
+      while (!Directory(parent).existsSync()) {
+        final next = p.dirname(parent);
+        if (next == parent) break;
+        parent = next;
+      }
+      desiredPaths.add(parent);
+      if (Directory(path).existsSync()) desiredPaths.add(path);
+    }
+
+    for (final path in desiredPaths) {
+      if (_stopRequested) return;
+      if (_subscriptions.containsKey(path)) continue;
+      try {
+        _subscriptions[path] = Directory(path).watch().listen(
+          (event) => _handleFileSystemEvent(path, event),
+          onError: (Object error, StackTrace stackTrace) {
+            if (!_stopRequested) _reportError(error, stackTrace);
+          },
+          onDone: () {
+            _subscriptions.remove(path);
+            _scheduleRefresh();
+          },
+        );
+      } catch (error, stackTrace) {
+        _reportError(error, stackTrace);
+      }
+    }
+    
+    for (final path in _subscriptions.keys.toList()) {
+      if (!desiredPaths.contains(path)) {
+        await _subscriptions.remove(path)!.cancel();
+      }
+    }
+  }
+
   // MARK: - Filesystem events
 
   void _handleFileSystemEvent(
     String dirPath,
     FileSystemEvent event,
   ) {
-    if (_stopRequested || event.isDirectory) return;
+    if (_stopRequested) return;
 
     // A move can involve a .desktop file at either its source or
     // destination, so consider both paths where available.
@@ -293,7 +315,15 @@ class _InstalledDesktopFilesWatcher {
     }
 
     final relevant = paths.any(
-      (path) => _isDirectDesktopFile(dirPath, path),
+      (path) {
+        final absolutePath = p.isAbsolute(path)
+            ? p.normalize(path)
+            : p.normalize(p.join(dirPath, path));
+        return _applicationPaths.any((applicationPath) =>
+            absolutePath == applicationPath ||
+            p.isWithin(absolutePath, applicationPath) ||
+            _isDirectDesktopFile(applicationPath, absolutePath));
+      },
     );
 
     if (relevant) {
@@ -356,7 +386,9 @@ class _InstalledDesktopFilesWatcher {
         _refreshRequested = false;
 
         try {
-          final parsedEntries = await parseAllInstalledDesktopFiles();
+          await _syncSubscriptions();
+          if (_stopRequested) break;
+          final parsedEntries = await loadEntries();
 
           // Parsing cannot necessarily be cancelled, but its result
           // must not be published after shutdown has begun.
@@ -414,7 +446,7 @@ class _InstalledDesktopFilesWatcher {
 
   Future<void> _cancelSubscriptions() async {
     final subscriptions =
-        List<StreamSubscription<FileSystemEvent>>.of(_subscriptions);
+        List<StreamSubscription<FileSystemEvent>>.of(_subscriptions.values);
 
     _subscriptions.clear();
 

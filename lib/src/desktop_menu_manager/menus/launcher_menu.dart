@@ -209,13 +209,9 @@ class _LauncherMenuState extends State<LauncherMenu> {
               child: Consumer<DesktopEntryProvider>(
                 builder: (context, provider, child) {
                   final currentEntries = provider.entries;
-                  if (currentEntries.isEmpty) return const SizedBox.shrink();
-
-                  if (_entries.isEmpty) {
-                    _entries = currentEntries.entries
-                        .where((e) => !e.value.isHidden())
-                        .toList();
-                  }
+                  _entries = currentEntries.entries
+                      .where((e) => !e.value.isHidden())
+                      .toList();
 
                   final results = _searchEntries(_query);
                   _lastResults = results;
