@@ -17,11 +17,11 @@
 // ignore_for_file: library_private_types_in_public_api
 
 import 'package:freedesktop_desktop_entry/freedesktop_desktop_entry.dart';
-import 'package:jappeos_desktop/src/utils.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../provider/desktop_entry_provider.dart';
+import '../provider/gpu_info_provider.dart';
 
 enum DesktopApplicationItemState {
   none,
@@ -450,7 +450,7 @@ class _DesktopApplicationContextMenuState extends State<DesktopApplicationContex
           child: Text("Launch"),
         ),
         ..._actionItems,
-        if (hasDiscreteGpu()) ... [
+        if (context.watch<GpuInfoProvider>().hasDiscreteGpu) ... [
           const MenuDivider(),
           MenuCheckbox(
             value: _useDiscreteGpu,
@@ -496,7 +496,9 @@ class _DesktopApplicationContextMenuState extends State<DesktopApplicationContex
     context.read<DesktopEntryProvider>().launchDesktopEntry(
       entry,
       action: action,
-      environment: getGraphicsEnvironmentVariables(_useDiscreteGpu),
+      environment: context
+          .read<GpuInfoProvider>()
+          .getGraphicsEnvironmentVariables(_useDiscreteGpu),
     );
   }
 }

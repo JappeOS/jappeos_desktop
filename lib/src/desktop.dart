@@ -40,6 +40,7 @@ import 'desktop_overlay_manager/overlays/audio_output_overlay.dart';
 import 'lifecycle_handler.dart';
 import 'provider/auth_provider.dart';
 import 'provider/desktop_entry_provider.dart';
+import 'provider/gpu_info_provider.dart';
 
 /// The stateful widget for the base desktop UI.
 class Desktop extends StatefulWidget {
@@ -102,7 +103,13 @@ class DesktopState extends State<Desktop> {
         providers: [
           ListenableProvider<AuthProvider>(create: (_) => AuthProvider()),
           ListenableProvider<DesktopEntryProvider>(
-              create: (_) => DesktopEntryProvider(), lazy: false),
+            create: (_) => DesktopEntryProvider(),
+            lazy: false,
+          ),
+          ListenableProvider(
+            create: (_) => GpuInfoProvider(),
+            lazy: false,
+          ),
         ],
         theme: _getTheme(false),
         darkTheme: _getTheme(true),
