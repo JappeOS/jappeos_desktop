@@ -142,10 +142,12 @@ class GpuInfoProvider extends ChangeNotifier {
       return [];
     }
 
-    return _drmDirectory
+    final list = await _drmDirectory
         .list(followLinks: true)
         .where((entity) => entity is Directory)
         .where((entity) => _cardNamePattern.hasMatch(_entryName(entity)))
-        .toList() as List<Directory>;
+        .toList();
+
+    return list.cast<Directory>();
   }
 }
