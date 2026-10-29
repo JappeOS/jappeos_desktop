@@ -22,6 +22,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'components/desktop_dock.dart';
 import 'components/desktop_notifications.dart';
+import 'components/desktop_panel_visibility.dart';
 import 'components/desktop_top_bar.dart';
 import 'components/login_screen.dart';
 import 'constants.dart';
@@ -195,10 +196,13 @@ class DesktopState extends State<Desktop> {
     MonitorConfig monitor,
   ) {
     return [
-      if (auth.isLoggedIn) ...[
-        _buildDock(),
-        _buildTopBar(),
-      ],
+      if (auth.isLoggedIn)
+        Positioned.fill(
+          child: DesktopPanelVisibility(
+            menuController: _menuController,
+            child: Stack(children: [_buildDock(), _buildTopBar()]),
+          ),
+        ),
       DesktopNotificationArea(),
       Positioned.fill(
         top: DSKTP_UI_LAYER_TOPBAR_HEIGHT,
