@@ -165,13 +165,13 @@ class DesktopState extends State<Desktop> {
   }
 
   ThemeData _getTheme(bool dark) {
-    final surfaceOpacity = 0.6;
+    final subsurfaceOpacity = 0.125;
     return ThemeData(
       colorScheme: dark
-          ? _getDarkDefaultColor(surfaceOpacity)
-          : _getLightDefaultColor(surfaceOpacity),
+          ? _getDarkDefaultColor(subsurfaceOpacity)
+          : _getLightDefaultColor(subsurfaceOpacity),
       radius: 0.9,
-      surfaceOpacity: surfaceOpacity,
+      surfaceOpacity: 0.6,
       surfaceBlur: 30,
     );
   }
@@ -240,6 +240,7 @@ class DesktopState extends State<Desktop> {
   /// Light defaultcolor color scheme.
   static ColorScheme _getLightDefaultColor(double surfaceOpacity) {
     final bgColor = Color(0xFFFFFFFF);
+    final extraTranspConstrast = 0.1;
     return ColorScheme(
       brightness: Brightness.light,
       background: bgColor,
@@ -252,19 +253,19 @@ class DesktopState extends State<Desktop> {
       primaryForeground: Color(0xFFFAFAFA),
       secondary: _calculateTransparentColorClamped(
         bgColor: bgColor,
-        bgSecondaryColor: Color(0xFFF5F5F5),
+        bgSecondaryColor: Color(0xFFF5F5F5).getContrastColor(extraTranspConstrast),
         surfaceOpacity: surfaceOpacity,
       ),
       secondaryForeground: Color(0xFF171717),
       muted: _calculateTransparentColorClamped(
         bgColor: bgColor,
-        bgSecondaryColor: Color(0xFFF5F5F5),
+        bgSecondaryColor: Color(0xFFF5F5F5).getContrastColor(extraTranspConstrast),
         surfaceOpacity: surfaceOpacity,
       ),
       mutedForeground: Color(0xFF737373),
       accent: _calculateTransparentColorClamped(
         bgColor: bgColor,
-        bgSecondaryColor: Color(0xFFF5F5F5),
+        bgSecondaryColor: Color(0xFFF5F5F5).getContrastColor(extraTranspConstrast),
         surfaceOpacity: surfaceOpacity,
       ),
       accentForeground: Color(0xFF171717),
@@ -279,7 +280,7 @@ class DesktopState extends State<Desktop> {
       chart5: Color(0xFFFE9A00),
       sidebar: _calculateTransparentColorClamped(
         bgColor: bgColor,
-        bgSecondaryColor: Color(0xFFFAFAFA),
+        bgSecondaryColor: Color(0xFFFAFAFA).getContrastColor(extraTranspConstrast),
         surfaceOpacity: surfaceOpacity,
       ),
       sidebarForeground: Color(0xFF0A0A0A),
@@ -295,6 +296,7 @@ class DesktopState extends State<Desktop> {
   /// Dark defaultcolor color scheme.
   static ColorScheme _getDarkDefaultColor(double surfaceOpacity) {
     final bgColor = Color(0xFF0A0A0A);
+    final extraTranspConstrast = 0.0;
     return ColorScheme(
       brightness: Brightness.dark,
       background: bgColor,
@@ -307,19 +309,19 @@ class DesktopState extends State<Desktop> {
       primaryForeground: Color(0xFF171717),
       secondary: _calculateTransparentColorClamped(
         bgColor: bgColor,
-        bgSecondaryColor: Color(0xFF262626),
+        bgSecondaryColor: Color(0xFF262626).getContrastColor(extraTranspConstrast),
         surfaceOpacity: surfaceOpacity,
       ),
       secondaryForeground: Color(0xFFFAFAFA),
       muted: _calculateTransparentColorClamped(
         bgColor: bgColor,
-        bgSecondaryColor: Color(0xFF262626),
+        bgSecondaryColor: Color(0xFF262626).getContrastColor(extraTranspConstrast),
         surfaceOpacity: surfaceOpacity,
       ),
       mutedForeground: Color(0xFFA1A1A1),
       accent: _calculateTransparentColorClamped(
         bgColor: bgColor,
-        bgSecondaryColor: Color(0xFF262626),
+        bgSecondaryColor: Color(0xFF262626).getContrastColor(extraTranspConstrast),
         surfaceOpacity: surfaceOpacity,
       ),
       accentForeground: Color(0xFFFAFAFA),
@@ -334,7 +336,7 @@ class DesktopState extends State<Desktop> {
       chart5: Color(0xFFFF2056),
       sidebar: _calculateTransparentColorClamped(
         bgColor: bgColor,
-        bgSecondaryColor: Color(0xFF171717),
+        bgSecondaryColor: Color(0xFF171717).getContrastColor(extraTranspConstrast),
         surfaceOpacity: surfaceOpacity,
       ),
       sidebarForeground: Color(0xFFFAFAFA),
@@ -366,12 +368,12 @@ class DesktopState extends State<Desktop> {
 
     // At zero opacity, the overlay cannot change the background.
     if (alphaByte == 0) {
-      if (bgColor == bgSecondaryColor) {
+      if (bgSecondaryColor == bgColor) {
         return Color.fromARGB(
           0,
-          (bgSecondaryColor.r * 255.0).round() & 0xff,
-          (bgSecondaryColor.g * 255.0).round() & 0xff,
-          (bgSecondaryColor.b * 255.0).round() & 0xff,
+          (bgColor.r * 255.0).round() & 0xff,
+          (bgColor.g * 255.0).round() & 0xff,
+          (bgColor.b * 255.0).round() & 0xff,
         );
       }
 
@@ -384,9 +386,9 @@ class DesktopState extends State<Desktop> {
       return adjusted.clamp(0, 255).round();
     }
 
-    final red = adjustChannel((bgSecondaryColor.r * 255.0).round() & 0xff, (bgColor.r * 255.0).round() & 0xff);
-    final green = adjustChannel((bgSecondaryColor.g * 255.0).round() & 0xff, (bgColor.g * 255.0).round() & 0xff);
-    final blue = adjustChannel((bgSecondaryColor.b * 255.0).round() & 0xff, (bgColor.b * 255.0).round() & 0xff);
+    final red = adjustChannel((bgColor.r * 255.0).round() & 0xff, (bgSecondaryColor.r * 255.0).round() & 0xff);
+    final green = adjustChannel((bgColor.g * 255.0).round() & 0xff, (bgSecondaryColor.g * 255.0).round() & 0xff);
+    final blue = adjustChannel((bgColor.b * 255.0).round() & 0xff, (bgSecondaryColor.b * 255.0).round() & 0xff);
     return Color.fromARGB(alphaByte, red, green, blue);
   }
 }

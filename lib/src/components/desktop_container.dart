@@ -63,23 +63,28 @@ class DesktopBlurContainer extends StatelessWidget {
   final Widget child;
   final double? width, height;
 
-  const DesktopBlurContainer({super.key, required this.child, this.width, this.height});
+  const DesktopBlurContainer({
+    super.key,
+    required this.child,
+    this.width,
+    this.height,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
+    return SizedBox(
       width: width,
       height: height,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.background.scaleAlpha(theme.surfaceOpacity ?? 0),
-      ),
-      //backgroundBlur: true,
-      //borderRadius: Theme.of(context).borderRadiusMd,
-      //border: ShadeContainerBorder.double,
-      child: SurfaceBlur(
-        surfaceBlur: theme.surfaceBlur,
-        child: child
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.background.scaleAlpha(
+              ((theme.surfaceOpacity ?? 0) * 1.25).min(1)),
+        ),
+        child: SurfaceBlur(
+          surfaceBlur: theme.surfaceBlur,
+          child: child
+        ),
       ),
     );
   }

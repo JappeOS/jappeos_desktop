@@ -242,8 +242,8 @@ class _DTopbarButtonNewState extends State<DTopbarButtonNew> {
                   top: BorderSide(
                     width: _borderWidth,
                     color: theme.colorScheme.isDark
-                        ? Colors.black.scaleAlpha(0.40)
-                        : Colors.black.scaleAlpha(0.30),
+                        ? Colors.black.scaleAlpha(0.35)
+                        : Colors.black.scaleAlpha(0.25),
                   ),
                 );
               }
@@ -252,8 +252,8 @@ class _DTopbarButtonNewState extends State<DTopbarButtonNew> {
                   top: BorderSide(
                     width: _borderWidth,
                     color: theme.colorScheme.isDark
-                        ? Colors.white.scaleAlpha(0.25)
-                        : Colors.white.scaleAlpha(0.35),
+                        ? Colors.white.scaleAlpha(0.20)
+                        : Colors.white.scaleAlpha(0.30),
                   ),
                 );
               }
