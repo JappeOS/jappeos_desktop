@@ -16,6 +16,8 @@
 
 // ignore_for_file: library_private_types_in_public_api
 
+import 'dart:ui';
+
 import 'package:jappeos_desktop_base/jappeos_desktop_base.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:shadcn_flutter/shadcn_flutter_extension.dart';
@@ -73,6 +75,7 @@ class DesktopTopBarNew extends StatelessWidget {
       right: 0,
       height: DSKTP_UI_LAYER_TOPBAR_HEIGHT,
       child: DesktopBlurContainer(
+        enableOpacity: DSKTP_UI_LAYER_TOPBAR_TRANSPARENCY_ENABLE,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

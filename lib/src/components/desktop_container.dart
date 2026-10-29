@@ -62,12 +62,14 @@ class DesktopOverlayContainer extends StatelessWidget {
 class DesktopBlurContainer extends StatelessWidget {
   final Widget child;
   final double? width, height;
+  final bool enableOpacity;
 
   const DesktopBlurContainer({
     super.key,
     required this.child,
     this.width,
     this.height,
+    this.enableOpacity = true,
   });
 
   @override
@@ -78,13 +80,15 @@ class DesktopBlurContainer extends StatelessWidget {
       height: height,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: theme.colorScheme.background.scaleAlpha(
-              ((theme.surfaceOpacity ?? 0) * 1.25).min(1)),
+          color: enableOpacity
+              ? theme.colorScheme.background.scaleAlpha(
+                  ((theme.surfaceOpacity ?? 0) * 1.25).min(1))
+              : theme.colorScheme.background,
         ),
-        child: SurfaceBlur(
+        child: enableOpacity ? SurfaceBlur(
           surfaceBlur: theme.surfaceBlur,
           child: child
-        ),
+        ) : child,
       ),
     );
   }

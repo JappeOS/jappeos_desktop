@@ -17,6 +17,7 @@
 // ignore_for_file: constant_identifier_names
 
 const DSKTP_UI_LAYER_TOPBAR_HEIGHT = 30.0;
+const DSKTP_UI_LAYER_TOPBAR_TRANSPARENCY_ENABLE = false;
 @Deprecated("The height of the dock is not constant anymore.")
 const DSKTP_UI_LAYER_DOCK_HEIGHT = 80.0;
 @Deprecated("This constant is temporary and will be removed later on. This is meant to be a modifiable OS setting that changes the wallpaper/desktop background image.")
