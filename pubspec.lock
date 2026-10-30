@@ -741,7 +741,7 @@ packages:
     description:
       path: "."
       ref: master
-      resolved-ref: "75cbe83c092d709e033b44d5e7116ead1ffc7e3e"
+      resolved-ref: "04c4ec009da31f3dd251e3b2104cb66817ad5aed"
       url: "https://github.com/JappeOS/shadcn_flutter.git"
     source: git
     version: "0.0.48"
