@@ -1,8 +1,8 @@
 # Maintainer: JappeOS
 
 pkgname=jappeos_desktop
-pkgver=1.0.57
-_tag=dev-v1.0.57
+pkgver=1.0.58
+_tag=dev-v1.0.58
 _jdwm_branch=main
 _wlroots_tag=0.19.0
 pkgrel=1
