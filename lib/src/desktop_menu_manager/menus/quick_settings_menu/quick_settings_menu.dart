@@ -277,39 +277,81 @@ class _QuickSettingsSliderPanel extends StatelessWidget {
   }
 }
 
-class _QuickSettingsPowerButton extends StatelessWidget {
+class _QuickSettingsPowerButton extends StatefulWidget {
   const _QuickSettingsPowerButton({super.key});
 
   @override
+  State<_QuickSettingsPowerButton> createState() => _QuickSettingsPowerButtonState();
+}
+
+class _QuickSettingsPowerButtonState extends State<_QuickSettingsPowerButton> {
+  late final bool _canSuspend, _canHibernate, _canReboot, _canShutdown;
+  late final Future<void> _initFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _initFuture = () async {
+      final powerService = context.read<PowerManagerService>();
+      _canSuspend = (await powerService.canSuspend()) == PowerActionCapability.allowed;
+      _canHibernate = (await powerService.canHibernate()) == PowerActionCapability.allowed;
+      _canReboot = (await powerService.canReboot()) == PowerActionCapability.allowed;
+      _canShutdown = (await powerService.canShutdown()) == PowerActionCapability.allowed;
+    } ();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final powerService = context.read<PowerManagerService>();
-    final sessionService = context.read<SessionManagerService>();
     return IconButton.secondary(
       icon: const Icon(Icons.power_settings_new),
       onPressed: () {
         showDropdown(
           context: context,
           builder: (context) {
-            return DropdownMenu(
-              children: [
-                MenuButton(
-                  onPressed: (_) => powerService.suspend(),
-                  child: const Text('Suspend'),
-                ),
-                MenuButton(
-                  onPressed: (_) => powerService.reboot(),
-                  child: const Text('Restart'),
-                ),
-                MenuButton(
-                  onPressed: (_) => powerService.shutdown(),
-                  child: const Text('Power Off'),
-                ),
-                MenuDivider(),
-                MenuButton(
-                  onPressed: (_) => sessionService.stopSession(),
-                  child: const Text('Log Out'),
-                ),
-              ],
+            return FutureBuilder(
+              future: _initFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final powerService = context.read<PowerManagerService>();
+                final sessionService = context.read<SessionManagerService>();
+
+                return DropdownMenu(
+                  children: [
+                    if (_canSuspend)
+                      MenuButton(
+                        onPressed: (_) => powerService.suspend(),
+                        child: const Text('Suspend'),
+                      ),
+                    if (_canHibernate)
+                      MenuButton(
+                        onPressed: (_) => powerService.hibernate(),
+                        child: const Text('Hibernate'),
+                      ),
+                    if (_canReboot)
+                      MenuButton(
+                        onPressed: (_) => powerService.reboot(),
+                        child: const Text('Restart'),
+                      ),
+                    if (_canShutdown)
+                      MenuButton(
+                        onPressed: (_) => powerService.shutdown(),
+                        child: const Text('Power Off'),
+                      ),
+                    if (_canSuspend ||
+                        _canHibernate ||
+                        _canReboot ||
+                        _canShutdown)
+                      MenuDivider(),
+                    MenuButton(
+                      onPressed: (_) => sessionService.stopSession(),
+                      child: const Text('Log Out'),
+                    ),
+                  ],
+                );
+              },
             );
           },
         );
