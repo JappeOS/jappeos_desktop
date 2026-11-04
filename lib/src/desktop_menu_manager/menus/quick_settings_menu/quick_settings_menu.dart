@@ -285,19 +285,50 @@ class _QuickSettingsPowerButton extends StatefulWidget {
 }
 
 class _QuickSettingsPowerButtonState extends State<_QuickSettingsPowerButton> {
-  late final bool _canSuspend, _canHibernate, _canReboot, _canShutdown;
-  late final Future<void> _initFuture;
+  Future<PowerActionCapability?> _checkCapability(
+    Future<PowerActionCapability> Function() check,
+  ) async {
+    try {
+      return await check();
+    } catch (error, stack) {
+      debugPrint('Power capability check failed: $error\n$stack');
+      return null;
+    }
+  }
 
-  @override
-  void initState() {
-    super.initState();
-    _initFuture = () async {
-      final powerService = context.read<PowerManagerService>();
-      _canSuspend = (await powerService.canSuspend()) == PowerActionCapability.allowed;
-      _canHibernate = (await powerService.canHibernate()) == PowerActionCapability.allowed;
-      _canReboot = (await powerService.canReboot()) == PowerActionCapability.allowed;
-      _canShutdown = (await powerService.canShutdown()) == PowerActionCapability.allowed;
-    } ();
+  bool _canOffer(PowerActionCapability? capability) =>
+      capability == PowerActionCapability.allowed ||
+      capability == PowerActionCapability.authenticationRequired;
+
+  MenuButton _powerAction(
+    String label,
+    PowerActionCapability? capability,
+    Future<void> Function(bool interactive) invoke,
+  ) {
+    final interactive =
+        capability == PowerActionCapability.authenticationRequired;
+    return MenuButton(
+      trailing: interactive ? const Icon(Icons.lock_outline) : null,
+      onPressed: (_) async {
+        try {
+          await invoke(interactive);
+        } catch (error, stack) {
+          debugPrint('$label failed: $error\n$stack');
+          if (!mounted) return;
+          showToast(
+            context: context,
+            builder: (context, overlay) => SurfaceCard(
+              child: Basic(
+                title: Text('$label could not be completed'),
+                subtitle: const Text(
+                    'Authorization may be required, or the system may be busy.'),
+              ),
+            ),
+          );
+        }
+      },
+      child: Text(label),
+    );
   }
 
   @override
@@ -305,46 +336,62 @@ class _QuickSettingsPowerButtonState extends State<_QuickSettingsPowerButton> {
     return IconButton.secondary(
       icon: const Icon(Icons.power_settings_new),
       onPressed: () {
+        final powerService = context.read<PowerManagerService>();
+        final sessionService = context.read<SessionManagerService>();
+
+        // Recheck each time the menu opens: session policy and inhibitors change.
+        final capabilities = Future.wait([
+          _checkCapability(powerService.canSuspend),
+          _checkCapability(powerService.canHibernate),
+          _checkCapability(powerService.canReboot),
+          _checkCapability(powerService.canShutdown),
+        ]);
+
         showDropdown(
           context: context,
           builder: (context) {
-            return FutureBuilder(
-              future: _initFuture,
+            return FutureBuilder<List<PowerActionCapability?>>(
+              future: capabilities,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
                   return const Center(child: CircularProgressIndicator());
                 }
-
-                final powerService = context.read<PowerManagerService>();
-                final sessionService = context.read<SessionManagerService>();
-
+                final results = snapshot.data ??
+                    List<PowerActionCapability?>.filled(4, null);
                 return DropdownMenu(
                   children: [
-                    if (_canSuspend)
-                      MenuButton(
-                        onPressed: (_) => powerService.suspend(),
-                        child: const Text('Suspend'),
-                      ),
-                    if (_canHibernate)
-                      MenuButton(
-                        onPressed: (_) => powerService.hibernate(),
-                        child: const Text('Hibernate'),
-                      ),
-                    if (_canReboot)
-                      MenuButton(
-                        onPressed: (_) => powerService.reboot(),
-                        child: const Text('Restart'),
-                      ),
-                    if (_canShutdown)
-                      MenuButton(
-                        onPressed: (_) => powerService.shutdown(),
-                        child: const Text('Power Off'),
-                      ),
-                    if (_canSuspend ||
-                        _canHibernate ||
-                        _canReboot ||
-                        _canShutdown)
-                      MenuDivider(),
+                    if (_canOffer(results[0]))
+                      _powerAction(
+                          'Suspend',
+                          results[0],
+                          (interactive) =>
+                              powerService.suspend(interactive: interactive)),
+                    if (_canOffer(results[1]))
+                      _powerAction(
+                          'Hibernate',
+                          results[1],
+                          (interactive) =>
+                              powerService.hibernate(interactive: interactive)),
+                    if (_canOffer(results[2]))
+                      _powerAction(
+                          'Restart',
+                          results[2],
+                          (interactive) =>
+                              powerService.reboot(interactive: interactive)),
+                    if (_canOffer(results[3]))
+                      _powerAction(
+                          'Power Off',
+                          results[3],
+                          (interactive) =>
+                              powerService.shutdown(interactive: interactive)),
+                    if (results.contains(null))
+                      const MenuLabel(
+                          child:
+                              Text('Some power options could not be checked.'))
+                    else if (!results.any(_canOffer))
+                      const MenuLabel(
+                          child: Text('No power actions available.')),
+                    const MenuDivider(),
                     MenuButton(
                       onPressed: (_) => sessionService.stopSession(),
                       child: const Text('Log Out'),
