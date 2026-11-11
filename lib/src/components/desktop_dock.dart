@@ -370,7 +370,7 @@ class _DesktopDockState extends State<DesktopDock> {
       }
     }
     if (target != null) {
-      wm.requestFocus(target);
+      wm.activateWindow(target);
     }
   }
 
