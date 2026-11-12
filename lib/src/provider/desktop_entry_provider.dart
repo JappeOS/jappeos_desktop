@@ -18,7 +18,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:freedesktop_desktop_entry/freedesktop_desktop_entry.dart';
 // ignore: implementation_imports
@@ -27,6 +26,8 @@ import 'package:path/path.dart' as p;
 
 import '../lifecycle_handler.dart';
 import 'gpu_info_provider.dart';
+import 'application_resolver.dart';
+import 'application_icon_service.dart';
 
 class DesktopEntryProvider extends ChangeNotifier {
   late Future<FreedesktopIconTheme> _themeLoadingFuture;
@@ -34,12 +35,17 @@ class DesktopEntryProvider extends ChangeNotifier {
   Map<String, DesktopEntry> _entries = {};
 
   Map<String, DesktopEntry> get entries => _entries;
+  ApplicationResolver resolver = ApplicationResolver(const {});
+  late final ApplicationIconService icons = ApplicationIconService(
+    (query) async => (await _themeLoadingFuture).findIcon(query));
 
   DesktopEntryProvider() {
     _themeLoadingFuture = _loadThemes();
     _watcher = InstalledDesktopFilesWatcher(
       onChanged: (entries) {
         _entries = entries;
+        resolver = ApplicationResolver(entries);
+        icons.invalidate();
         notifyListeners();
       },
       onError: (error, stackTrace) {
@@ -52,44 +58,9 @@ class DesktopEntryProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    icons.invalidate();
     safeAsyncDispose(_watcher.stopListening);
     super.dispose();
-  }
-
-  Future<File?> getIcon(DesktopEntry entry) async {
-    String? icon = entry.entries[DesktopEntryKey.icon.string]?.value;
-    if (icon == null) return null;
-    return (await _themeLoadingFuture).findIcon(
-      IconQuery(
-        name: icon,
-        size: 64,
-        extensions: ['png', 'svg'],
-        //preferredThemes: ['Papirus', 'Papirus-Dark', 'Papirus-Light'],
-      ),
-    );
-  }
-
-  Future<Widget> getIconWidget(DesktopEntry entry, {double size = 24}) async {
-    final iconFile = await getIcon(entry);
-    if (iconFile == null) {
-      return const Icon(Icons.question_mark);
-    }
-    if (iconFile.path.endsWith('.svg')) {
-      return SvgPicture.file(
-        iconFile,
-        width: size,
-        height: size,
-        errorBuilder: (context, error, stackTrace)
-            => const Icon(Icons.settings_applications),
-      );
-    }
-    return Image.file(
-      iconFile,
-      width: size,
-      height: size,
-      errorBuilder: (context, error, stackTrace)
-          => const Icon(Icons.settings_applications),
-    );
   }
 
   Future<bool> launchDesktopEntry(

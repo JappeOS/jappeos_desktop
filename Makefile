@@ -101,7 +101,7 @@ endif
 
 COMMON_LDFLAGS := $(WLR_LDFLAGS) \
                    -L. -L$(DEPS_DIR) \
-                   -linput -lwlroots-0.19 -lwayland-server -lwayland-client -lxkbcommon -lpixman-1 -ldrm \
+                   -linput -lwlroots-0.19 -lwayland-server -lwayland-client -lxcb -lxkbcommon -lpixman-1 -ldrm \
                    -lliftoff -ldisplay-info -lepoxy -lGLESv2 -lEGL -lGL -lpam
 
 DEBUG_LDFLAGS := $(COMMON_LDFLAGS) -lflutter_engine_debug $(ASAN) -stdlib=libc++ -lc++abi -lpthread

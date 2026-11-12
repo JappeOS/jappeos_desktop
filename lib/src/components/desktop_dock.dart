@@ -1,3 +1,4 @@
+
 //  JappeOS-Desktop, The desktop environment for JappeOS.
 //  Copyright (C) 2026  The JappeOS team.
 //
@@ -19,11 +20,14 @@
 import 'dart:async';
 
 import 'package:jdwm/jdwm.dart';
+import 'package:provider/provider.dart';
 import 'package:jappeos_desktop/src/desktop_menu_manager/menus/launcher_menu.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../desktop_menu_manager/desktop_menu_controller.dart';
 import '../desktop_menu_manager/desktop_menu_registry.dart';
+import '../provider/desktop_entry_provider.dart';
+import '../provider/application_resolver.dart';
 import 'desktop_application_item.dart';
 import 'desktop_container.dart';
 
@@ -54,6 +58,7 @@ class _DesktopDockState extends State<DesktopDock> {
   bool _dockRectRefreshScheduled = false;
   bool _intersectionRecomputeScheduled = false;
   WindowManagerState? _observedWm;
+  DesktopEntryProvider? _desktopEntries;
   WindowEntry? _focusedWindow;
   Rect? _dockRect;
   List<DockEntry> _entries = const <DockEntry>[];
@@ -69,6 +74,12 @@ class _DesktopDockState extends State<DesktopDock> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final entries = context.read<DesktopEntryProvider>();
+    if (!identical(entries, _desktopEntries)) {
+      _desktopEntries?.removeListener(_onWindowManagerStateChanged);
+      _desktopEntries = entries;
+      entries.addListener(_onWindowManagerStateChanged);
+    }
     _bindWindowManager();
   }
 
@@ -82,6 +93,7 @@ class _DesktopDockState extends State<DesktopDock> {
 
   @override
   void dispose() {
+    _desktopEntries?.removeListener(_onWindowManagerStateChanged);
     _unhideDebounceTimer?.cancel();
     _observedWm?.removeWindowStateListener(_onWindowManagerStateChanged);
     _setFocusedWindow(null);
@@ -111,12 +123,16 @@ class _DesktopDockState extends State<DesktopDock> {
     if (!mounted || wm == null) {
       return;
     }
+
+    final resolver = _desktopEntries?.resolver;
+    if (resolver == null) return;
+
     final windows = wm.getManagedWindowsByFocus();
+    _desktopEntries!.icons.retainWindows(windows.map((w) => w.viewId).toSet());
     final grouped = <String, List<ManagedWindowInfo>>{};
+   
     for (final window in windows) {
-      final normalizedAppId = window.appId.trim().toLowerCase();
-      final key =
-          normalizedAppId.isEmpty ? "__view_${window.viewId}" : normalizedAppId;
+      final key = resolver.forWindow(window).groupId;
       grouped.putIfAbsent(key, () => <ManagedWindowInfo>[]).add(window);
     }
 
@@ -128,19 +144,16 @@ class _DesktopDockState extends State<DesktopDock> {
       }
       final focused = group.any((window) => window.focused);
       final representative =
-          focused ? group.firstWhere((window) => window.focused) : group.first;
-      final itemId = representative.appId.trim().isNotEmpty
-          ? representative.appId
-          : representative.title;
-      if (itemId.trim().isEmpty) {
-        continue;
-      }
+          focused ? group.firstWhere((window) => window.focused) : group.last;
+      final application = resolver.forWindow(representative);
+      final itemId = application.groupId;
       final state = focused
           ? DesktopApplicationItemState.focused
           : DesktopApplicationItemState.open;
       entries.add(
         DockEntry.application(
           item: itemId,
+          application: application,
           state: state,
           onPressed: () {
             int? currentFocusedViewId;
@@ -162,7 +175,7 @@ class _DesktopDockState extends State<DesktopDock> {
         ),
       );
       signatureParts.add(
-        "${itemId.toLowerCase()}|${state.name}|${group.length}|${representative.viewId}",
+        "${itemId.toLowerCase()}|${state.name}|${group.map((w) => "${w.viewId}:${w.focused}").join(",")}|${representative.viewId}|${representative.metadata.revision}|${application.desktopId}|${application.title}|${_desktopEntries!.icons.generation}",
       );
     }
 
@@ -410,7 +423,7 @@ class _DesktopDockState extends State<DesktopDock> {
         if (entry.item != null) {
           return DesktopApplicationContextMenu(
             key: ValueKey<String>("dock-app-${entry.item!}"),
-            entryId: entry.item!,
+            entryId: entry.application?.desktopId ?? entry.item!,
             onOpenDetails: () {
               // TODO
             },
@@ -421,6 +434,7 @@ class _DesktopDockState extends State<DesktopDock> {
               sizeFactor: 0.75,
               borderRadius: itemRad,
               entry: entry.item!,
+              application: entry.application,
               itemState: entry.state,
               onPressed: entry.onPressed,
             ),
@@ -496,6 +510,7 @@ class _DesktopDockState extends State<DesktopDock> {
 
 class DockEntry {
   final String? item;
+  final ResolvedApplication? application;
   //final Widget? custom;
   final DesktopApplicationItemState state;
   //final bool launcher;
@@ -504,6 +519,7 @@ class DockEntry {
 
   DockEntry._({
     this.item,
+    this.application,
     //this.custom,
     this.state = DesktopApplicationItemState.none,
     //this.launcher = false,
@@ -513,12 +529,14 @@ class DockEntry {
 
   factory DockEntry.application({
     required String item,
+    required ResolvedApplication application,
     DesktopApplicationItemState state = DesktopApplicationItemState.none,
     void Function()? onPressed,
     void Function()? onQuit,
   }) {
     return DockEntry._(
       item: item,
+      application: application,
       state: state,
       onPressed: onPressed,
       onQuit: onQuit,

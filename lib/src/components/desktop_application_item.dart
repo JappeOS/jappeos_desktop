@@ -22,6 +22,8 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../provider/desktop_entry_provider.dart';
 import '../provider/gpu_info_provider.dart';
+import '../provider/application_resolver.dart';
+import 'application_icon.dart';
 
 enum DesktopApplicationItemState {
   none,
@@ -34,6 +36,7 @@ class DesktopApplicationItem extends StatefulWidget {
   final bool custom;
   final Widget? customChild;
   final String? entry;
+  final ResolvedApplication? application;
   final bool showTitle;
   final DesktopApplicationItemState itemState;
   final double sizeFactor;
@@ -46,6 +49,7 @@ class DesktopApplicationItem extends StatefulWidget {
     this.custom = false,
     this.customChild,
     this.entry,
+    this.application,
     this.showTitle = true,
     this.itemState = DesktopApplicationItemState.none,
     this.sizeFactor = 1.0,
@@ -57,6 +61,7 @@ class DesktopApplicationItem extends StatefulWidget {
   factory DesktopApplicationItem.icon({
     Key? key,
     required String entry,
+    ResolvedApplication? application,
     DesktopApplicationItemState itemState = DesktopApplicationItemState.none,
     double sizeFactor = 1,
     BorderRadiusGeometry? borderRadius,
@@ -66,6 +71,7 @@ class DesktopApplicationItem extends StatefulWidget {
     return DesktopApplicationItem._(
       key: key,
       entry: entry,
+      application: application,
       showTitle: false,
       itemState: itemState,
       sizeFactor: sizeFactor,
@@ -78,6 +84,7 @@ class DesktopApplicationItem extends StatefulWidget {
   factory DesktopApplicationItem.iconWithTitle({
     Key? key,
     required String entry,
+    ResolvedApplication? application,
     DesktopApplicationItemState itemState = DesktopApplicationItemState.none,
     BorderRadiusGeometry? borderRadius,
     void Function()? onPressed,
@@ -86,6 +93,7 @@ class DesktopApplicationItem extends StatefulWidget {
     return DesktopApplicationItem._(
       key: key,
       entry: entry,
+      application: application,
       showTitle: true,
       itemState: itemState,
       borderRadius: borderRadius,
@@ -121,7 +129,7 @@ class DesktopApplicationItem extends StatefulWidget {
 }
 
 class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
-  Future<Widget>? _iconFuture;
+  Widget? _icon;
   late String _title;
   bool _isHovered = false, _isPressed = false;
 
@@ -147,20 +155,17 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
       );
     }
 
-    final desktopEntryProvider = context.read<DesktopEntryProvider>();
-    final entries = context.select<DesktopEntryProvider, Map<String, DesktopEntry>>((value) => value.entries);
-    final entry = _resolveDesktopEntry(
-      entries,
-      widget.entry,
-    );
+    final desktopEntryProvider = context.watch<DesktopEntryProvider>();
+    final application = widget.application ??
+        desktopEntryProvider.resolver.forEntry(widget.entry ?? '');
+    final entry = application.entry;
 
-    _title = entry?.entries[DesktopEntryKey.name.string]?.value ?? "Unknown";
-    if (entry == null) {
-      setState(() => _iconFuture = null);
-    } else if (_iconFuture == null) {
-      setState(() => _iconFuture ??=
-          desktopEntryProvider.getIconWidget(entry, size: iconSize));
-    }
+    _title = application.title;
+    _icon = ApplicationIcon(
+      application: application,
+      service: desktopEntryProvider.icons,
+      size: iconSize,
+    );
 
     return _buildBase(
       iconSize: iconSize,
@@ -174,41 +179,6 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
               : null),
       onSecondaryTap: widget.onPressedSecondary,
     );
-  }
-
-  // TODO: Move this to a more appropriate place, e.g., DesktopEntryProvider or even a utility file.
-  DesktopEntry? _resolveDesktopEntry(
-    Map<String, DesktopEntry> entries,
-    String? query,
-  ) {
-    if (query == null || query.isEmpty) {
-      return null;
-    }
-    final direct = entries[query];
-    if (direct != null) {
-      return direct;
-    }
-    final withDesktop = entries["$query.desktop"];
-    if (withDesktop != null) {
-      return withDesktop;
-    }
-
-    String normalize(String value) {
-      var result = value.trim().toLowerCase();
-      if (result.endsWith(".desktop")) {
-        result = result.substring(0, result.length - ".desktop".length);
-      }
-      return result;
-    }
-
-    final normalizedQuery = normalize(query);
-    for (final candidate in entries.entries) {
-      final normalizedKey = normalize(candidate.key);
-      if (normalizedKey == normalizedQuery) {
-        return candidate.value;
-      }
-    }
-    return null;
   }
 
   Widget _buildBase({
@@ -299,31 +269,8 @@ class _DesktopApplicationItemState extends State<DesktopApplicationItem> {
     );
   }
 
-  Widget _buildIcon({
-    double? width,
-    double? height,
-  }) {
-    Widget fallbackIcon = SizedBox(
-      width: width,
-      height: height,
-      child: Icon(Icons.settings_applications, size: width),
-    );
-
-    return FutureBuilder(
-      future: _iconFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return fallbackIcon;
-        }
-        if (!snapshot.hasData || snapshot.data == null) return fallbackIcon;
-        return SizedBox(
-          width: width,
-          height: height,
-          child: snapshot.data!,
-        );
-      },
-    );
-  }
+  Widget _buildIcon({double? width, double? height}) =>
+      SizedBox(width: width, height: height, child: _icon);
 
   Widget _buildMaybeIndicator({
     required ThemeData theme,
@@ -439,11 +386,8 @@ class _DesktopApplicationContextMenuState extends State<DesktopApplicationContex
   @override
   Widget build(BuildContext context) {
     if (widget.desktopEntry == null && widget.entryId != null) {
-      final entries =
-          context.select<DesktopEntryProvider, Map<String, DesktopEntry>>(
-            (value) => value.entries
-          );
-      _entry = entries[widget.entryId!];
+      final provider = context.watch<DesktopEntryProvider>();
+      _entry = provider.resolver.forEntry(widget.entryId!).entry;
       _handleEntry(_entry);
     }
 

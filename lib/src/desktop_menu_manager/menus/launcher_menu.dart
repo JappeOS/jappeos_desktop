@@ -247,12 +247,18 @@ class _LauncherMenuState extends State<LauncherMenu> {
                           childAspectRatio: aspectRatio,
                         ),
                         itemCount: results.length,
+                        findChildIndexCallback: (key) {
+                          if (key is! ValueKey<String>) return null;
+                          final index = results.indexWhere((entry) => entry.key == key.value);
+                          return index < 0 ? null : index;
+                        },
                         itemBuilder: (context, index) {
                           final e = results[index];
 
                           final selected = index == _selectedIndex;
 
                           return DecoratedBox(
+                            key: ValueKey(e.key),
                             decoration: selected
                                 ? BoxDecoration(
                                     borderRadius: BorderRadius.circular(8),
