@@ -10,7 +10,7 @@ ClientIconImage pixels(int size, {int scale = 1}) => ClientIconImage(
       width: size,
       height: size,
       scale: scale,
-      rgba: Uint8List(size * size * 4),
+      rgba: Uint8List(size * size * 4)..[3] = 255,
     );
 ResolvedApplication resolved({
   int revision = 1,
@@ -38,6 +38,87 @@ ResolvedApplication resolved({
       ),
     );
 void main() {
+  test('transparent client icons fall back to the desktop entry', () async {
+    final dir = Directory.systemTemp.createTempSync('transparent-icons-');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final file = File('${dir.path}/desktop.svg')
+      ..writeAsStringSync('<svg xmlns="http://www.w3.org/2000/svg"/>');
+    final service = ApplicationIconService(
+      (query) async => query.name == 'desktop' ? file : null,
+    );
+    final transparent = ClientIconImage(
+      width: 1,
+      height: 1,
+      scale: 1,
+      rgba: Uint8List.fromList([255, 255, 255, 0]),
+    );
+    final sources = await service.sources(
+      resolved(name: '', images: [transparent]),
+      size: 32,
+      dpr: 1,
+    );
+    expect(sources, hasLength(1));
+    expect(sources.single.pixels, isNull);
+    expect(sources.single.bytes, await file.readAsBytes());
+    expect(sources.single.svg, isTrue);
+  });
+
+  test('transparent variants are skipped but faint and black pixels remain',
+      () async {
+    final service = ApplicationIconService((_) async => null);
+    final transparent = ClientIconImage(
+      width: 32,
+      height: 32,
+      scale: 1,
+      rgba: Uint8List(32 * 32 * 4),
+    );
+    final faint = ClientIconImage(
+      width: 16,
+      height: 16,
+      scale: 1,
+      rgba: Uint8List(16 * 16 * 4)..[16 * 16 * 4 - 1] = 1,
+    );
+    final black = pixels(8);
+    final sources = await service.sources(
+      resolved(name: '', images: [transparent, faint, black]),
+      size: 32,
+      dpr: 1,
+    );
+    expect(sources.map((source) => source.pixels), [faint, black]);
+  });
+
+  test(
+      'transparent updates permit generic fallback and later visible revisions',
+      () async {
+    final service = ApplicationIconService((_) async => null);
+    final visible = pixels(32);
+    final transparent = ClientIconImage(
+      width: 1,
+      height: 1,
+      scale: 1,
+      rgba: Uint8List(4),
+    );
+    final first = await service.sources(
+      resolved(name: '', images: [visible]),
+      size: 32,
+      dpr: 1,
+    );
+    expect(first.single.pixels, same(visible));
+    expect(
+        await service.sources(
+          resolved(revision: 2, name: '', images: [transparent]),
+          size: 32,
+          dpr: 1,
+        ),
+        isEmpty);
+    final restored = await service.sources(
+      resolved(revision: 3, name: '', images: [visible]),
+      size: 32,
+      dpr: 1,
+    );
+    expect(restored.single.pixels, same(visible));
+  });
+
   test(
       'multiple DPI requests stay cached and window removal releases all variants',
       () async {

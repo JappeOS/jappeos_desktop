@@ -85,7 +85,7 @@ class BluetoothQuickSetting extends StatelessWidget
 
   IconData _icon() => Icons.bluetooth;
 
-  bool _isEnabled() => false;
+  bool _isEnabled() => true;
 
   void _toggle() {}
 }

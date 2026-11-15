@@ -189,6 +189,15 @@ class ApplicationIconService {
     return request;
   }
 
+  // An entirely transparent client icon is not a usable application identity.
+  // Inspect alpha only: opaque black and even faint pixels are valid icons.
+  static bool _hasVisiblePixels(ClientIconImage image) {
+    for (var offset = 3; offset < image.rgba.length; offset += 4) {
+      if (image.rgba[offset] != 0) return true;
+    }
+    return false;
+  }
+
   Future<List<ApplicationIconSource>> _load(
     ResolvedApplication app,
     double size,
@@ -242,7 +251,9 @@ class ApplicationIconService {
       size,
       dpr,
     )) {
-      sources.add(ApplicationIconSource.pixels(image));
+      if (_hasVisiblePixels(image)) {
+        sources.add(ApplicationIconSource.pixels(image));
+      }
     }
 
     await addNamed(app.entry?.entries[DesktopEntryKey.icon.string]?.value);
