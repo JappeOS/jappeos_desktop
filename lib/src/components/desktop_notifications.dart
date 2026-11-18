@@ -16,11 +16,16 @@
 
 // ignore_for_file: library_private_types_in_public_api
 
-import 'package:jappeos_desktop/src/constants.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:jappeos_services/jappeos_services.dart';
+import 'package:provider/provider.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart' hide Notification;
 
+import '../constants.dart';
+import 'application_icon.dart';
 import 'desktop_container.dart';
 
+/// A widget that displays the notification area on the desktop, showing
+/// notifications provided by the [NotificationManagerService] as overlays.
 class DesktopNotificationArea extends StatefulWidget {
   const DesktopNotificationArea({super.key});
 
@@ -38,62 +43,180 @@ class _DesktopNotificationAreaState extends State<DesktopNotificationArea> {
       width: 350 * theme.scaling,
       child: Column(
         children: [
-          // TODO: Implement notifications through jappeos_services, this is just a placeholder for now
-          /*NotificationCard.basic(
-            title: "Email App",
-            contentText: "You have a new email from John Doe.",
-            actions: [
-              ("Reply", () {}),
-              ("Mark as Read", () {}),
-            ],
-          ),*/
+          // Single notification for now.
+          Selector<NotificationManagerService, List<Notification>>(
+            selector: (_, provider) => provider.notifications,
+            builder: (context, data, _) {
+              if (data.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return DesktopOverlayContainer(
+                child: ProvidedNotificationContent(notification: data.last),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 }
 
-class NotificationCard extends StatefulWidget {
+/// A widget that displays the content of a notification provided
+/// by the [NotificationManagerService].
+class ProvidedNotificationContent extends StatefulWidget {
+  final Notification notification;
+
+  const ProvidedNotificationContent({super.key, required this.notification});
+
+  @override
+  State<ProvidedNotificationContent> createState() => _ProvidedNotificationContentState();
+}
+
+class _ProvidedNotificationContentState extends State<ProvidedNotificationContent> {
+  List<(String, void Function())> _actions = [];
+  bool _isLoading = false;
+  int _requestId = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateObjects();
+  }
+
+  @override
+  void didUpdateWidget(covariant ProvidedNotificationContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.notification != widget.notification) {
+      _updateObjects();
+    }
+  }
+
+  Future<void> _updateObjects() async {
+    final requestId = ++_requestId;
+    final data = widget.notification;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await _buildActionsAsync(data);
+
+      if (!mounted || requestId != _requestId) return;
+
+      setState(() {
+        _actions = result;
+      });
+    } finally {
+      if (mounted && requestId == _requestId) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<List<(String, void Function())>> _buildActionsAsync(Notification data) async {
+    List<(String, void Function())> list = [];
+    int i = 0;
+
+    for (final action in data.actionKeys) {
+      if (!mounted) break;
+      try {
+        final actionName =
+            await context.read<NotificationManagerService>()
+            .getActionName(data, action);
+
+        list.add((
+          actionName,
+          () async {
+            try {
+              await context.read<NotificationManagerService>().invokeAction(data, i);
+            } catch (e) {
+              debugPrint("Failed to invoke action for notification $action: $e");
+            }
+          },
+        ));
+
+      } catch (e) {
+        debugPrint("Failed to get action name for action $action: $e");
+      } finally {
+        i++;
+      }
+    }
+
+    return list;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationContent.basic(
+      title: widget.notification.appName,
+      contentText: widget.notification.body,
+      actions: _isLoading ? const [] : _actions,
+    );
+  }
+}
+
+/// A widget that displays the content of a notification with
+/// customizable properties. Use [ProvidedNotificationContent] to display
+/// a notification provided by the [NotificationManagerService].
+class NotificationContent extends StatefulWidget {
+  final ApplicationIcon? appIcon;
+  final Image? smallImage;
   final String source;
   final String contentText;
   final bool isMedia;
   final List<(String, void Function())> actions;
+  final EdgeInsetsGeometry? padding;
 
-  factory NotificationCard.basic({
+  factory NotificationContent.basic({
+    ApplicationIcon? appIcon,
+    Image? smallImage,
     required String title,
     required String contentText,
     List<(String, void Function())> actions = const [],
+    EdgeInsetsGeometry? padding,
   }) {
-    return NotificationCard._(
+    return NotificationContent._(
+      appIcon: appIcon,
+      smallImage: smallImage,
       source: title,
       contentText: contentText,
       actions: actions,
+      padding: padding,
     );
   }
 
-  factory NotificationCard.media({
+  factory NotificationContent.media({
+    ApplicationIcon? appIcon,
+    Image? smallImage,
     required String title,
     required String contentText,
+    EdgeInsetsGeometry? padding,
   }) {
-    return NotificationCard._(
+    return NotificationContent._(
+      appIcon: appIcon,
+      smallImage: smallImage,
       source: title,
       contentText: contentText,
-      isMedia: true
+      isMedia: true,
+      padding: padding,
     );
   }
 
-  const NotificationCard._({
+  const NotificationContent._({
+    this.appIcon,
+    this.smallImage,
     required this.source,
     required this.contentText,
     this.isMedia = false,
     this.actions = const [],
+    this.padding,
   });
 
   @override
-  _NotificationCardState createState() => _NotificationCardState();
+  State<NotificationContent> createState() => _NotificationContentState();
 }
 
-class _NotificationCardState extends State<NotificationCard> {
+class _NotificationContentState extends State<NotificationContent> {
   bool _hovered = false;
   bool _expanded = false;
 
@@ -104,10 +227,10 @@ class _NotificationCardState extends State<NotificationCard> {
     variance: ButtonVariance.secondary,
   ) : const SizedBox.shrink();
 
-  Widget _arrowIconButton(void Function() onPressed) => _hovered ?IconButton(
+  Widget _arrowIconButton(void Function() onPressed) => _hovered ? IconButton(
     onPressed: onPressed,
     icon: AnimatedRotation(
-      turns: _expanded ? 0.5 : 0, // 180° rotation
+      turns: _expanded ? 0.5 : 0,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
       child: const Icon(Icons.keyboard_arrow_down),
@@ -116,6 +239,16 @@ class _NotificationCardState extends State<NotificationCard> {
     variance: ButtonVariance.secondary,
   ) : const SizedBox.shrink();
 
+  Widget _buildAppIcon(ThemeData theme) => SizedBox.square(
+    dimension: 20 * theme.scaling,
+    child: widget.appIcon
+        ?? Icon(
+            Icons.notifications,
+            size: 20 * theme.scaling,
+            color: theme.colorScheme.mutedForeground,
+          ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final bool isExpandable = widget.actions.isNotEmpty;
@@ -123,71 +256,80 @@ class _NotificationCardState extends State<NotificationCard> {
 
     return MouseRegion(
       onEnter: (_) {
-        setState(() {
-          _hovered = true;
-        });
+        setState(() => _hovered = true);
       },
       onExit: (_) {
-        setState(() {
-          _hovered = false;
-        });
+        setState(() => _hovered = false);
       },
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        alignment: Alignment.topCenter,
-        child: DesktopOverlayContainer(
-          /*style: FilledButton.styleFrom( TODO
-            padding: EdgeInsets.symmetric(horizontal: 4 * Theme.of(context).scaling, vertical: 4 * Theme.of(context).scaling * 1.1),
-            shape: RoundedRectangleBorder(side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant), borderRadius: BorderRadius.circular(4 * Theme.of(context).scaling)),
-          ),*/
-          //onPressed: () {},
-          padding: EdgeInsets.all(16 * theme.scaling),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: 8 * theme.scaling,
-            children: [
-              SizedBox(
-                height: 35 / 1.25,
-                child: Row(
-                  spacing: 8 * theme.scaling,
+      child: GestureDetector(
+        onTap: isExpandable
+            ? () => setState(() => _expanded = !_expanded)
+            : null,
+        behavior: HitTestBehavior.translucent,
+        child: AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: widget.padding ?? EdgeInsets.all(16 * theme.scaling),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: (35 / 1.25) * theme.scaling,
+                  child: Row(
+                    spacing: 8 * theme.scaling,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildAppIcon(theme),
+                      Expanded(
+                        child: Text(widget.source).small().medium().muted(),
+                      ),
+                      if (isExpandable)
+                        _arrowIconButton(() => setState(() => _expanded = !_expanded)),
+                      if (!widget.isMedia)
+                        _iconButton(Icons.close, () {}),
+                    ],
+                  ),
+                ),
+                Gap(6 * theme.scaling),
+                Row(
+                  spacing: 12 * theme.scaling,
                   children: [
-                    const Icon(Icons.settings, size: 20).muted(),
-                    Expanded(child: Text(widget.source).muted()),
-                    if (isExpandable) _arrowIconButton(() => setState(() => _expanded = !_expanded)),
-                    if (!widget.isMedia) _iconButton(Icons.close, () {}),
+                    if (widget.smallImage != null)
+                      SizedBox.square(
+                        dimension: 50 * theme.scaling,
+                        child: widget.smallImage,
+                      ),
+                    Expanded(
+                      child: Text(
+                        widget.contentText,
+                        textAlign: TextAlign.left,
+                        maxLines: 3,
+                      ).small().ellipsis(),
+                    ),
+                    if (widget.isMedia) ... [
+                      IconButton.ghost(onPressed: () {}, icon: const Icon(Icons.skip_previous)),
+                      IconButton.secondary(onPressed: () {}, icon: const Icon(Icons.play_arrow)),
+                      IconButton.ghost(onPressed: () {}, icon: const Icon(Icons.skip_next)),
+                    ],
                   ],
                 ),
-              ),
-              Row(
-                spacing: 8 * theme.scaling,
-                children: [
-                  SizedBox.square(dimension: 50, child: Container(color: Colors.black)),
-                  Expanded(
-                    child: Text(
-                      widget.contentText,
-                      textAlign: TextAlign.left,
-                      maxLines: 3,
-                    ).small().ellipsis(),
-                  ),
-                  if (widget.isMedia) ... [
-                    IconButton.ghost(onPressed: () {}, icon: const Icon(Icons.skip_previous)),
-                    IconButton.secondary(onPressed: () {}, icon: const Icon(Icons.play_arrow)),
-                    IconButton.ghost(onPressed: () {}, icon: const Icon(Icons.skip_next)),
-                  ],
+                if (_expanded) ...[
+                  Gap(8 * theme.scaling),
+                  Row(
+                    //spacing: 4 * theme.scaling,
+                    children: List.generate(widget.actions.length, (index) => Expanded(
+                      child: TextButton(
+                        onPressed: widget.actions[index].$2,
+                        child: Text(widget.actions[index].$1),
+                      ),
+                    )),
+                 ),
                 ],
-              ),
-              if (_expanded) Row(
-                //spacing: 4 * theme.scaling,
-                children: List.generate(widget.actions.length, (index) => Expanded(
-                  child: TextButton(
-                    onPressed: widget.actions[index].$2,
-                    child: Text(widget.actions[index].$1),
-                  ),
-                )),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
