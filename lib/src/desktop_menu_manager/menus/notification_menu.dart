@@ -21,13 +21,13 @@ import 'dart:async';
 import 'package:flutter/material.dart' show DateUtils;
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:jappeos_desktop/src/extensions.dart';
 import 'package:jappeos_services/jappeos_services.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Notification;
 
 import '../../components/desktop_container.dart';
 import '../../components/desktop_notifications.dart';
+import '../../extensions.dart';
 import '../desktop_menu_controller.dart';
 import '../desktop_menu_entry.dart';
 

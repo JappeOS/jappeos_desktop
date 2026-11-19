@@ -150,6 +150,14 @@ class _ProvidedNotificationContentState extends State<ProvidedNotificationConten
     return NotificationContent.basic(
       title: widget.notification.appName,
       contentText: widget.notification.body,
+      onClose: () async {
+        try {
+          await context.read<NotificationManagerService>()
+              .dismiss(widget.notification);
+        } catch (e) {
+          debugPrint("Failed to dismiss notification: $e");
+        }
+      },
       actions: _isLoading ? const [] : _actions,
     );
   }
@@ -164,6 +172,7 @@ class NotificationContent extends StatefulWidget {
   final String source;
   final String contentText;
   final bool isMedia;
+  final void Function()? onClose;
   final List<(String, void Function())> actions;
   final EdgeInsetsGeometry? padding;
 
@@ -172,6 +181,7 @@ class NotificationContent extends StatefulWidget {
     Image? smallImage,
     required String title,
     required String contentText,
+    void Function()? onClose,
     List<(String, void Function())> actions = const [],
     EdgeInsetsGeometry? padding,
   }) {
@@ -180,6 +190,7 @@ class NotificationContent extends StatefulWidget {
       smallImage: smallImage,
       source: title,
       contentText: contentText,
+      onClose: onClose,
       actions: actions,
       padding: padding,
     );
@@ -208,6 +219,7 @@ class NotificationContent extends StatefulWidget {
     required this.source,
     required this.contentText,
     this.isMedia = false,
+    this.onClose,
     this.actions = const [],
     this.padding,
   });
@@ -289,7 +301,7 @@ class _NotificationContentState extends State<NotificationContent> {
                       if (isExpandable)
                         _arrowIconButton(() => setState(() => _expanded = !_expanded)),
                       if (!widget.isMedia)
-                        _iconButton(Icons.close, () {}),
+                        _iconButton(Icons.close, widget.onClose ?? () {}),
                     ],
                   ),
                 ),
