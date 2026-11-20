@@ -380,7 +380,7 @@ packages:
     description:
       path: "."
       ref: dev
-      resolved-ref: "54db6347eacd1c776100a5b3d01d277d988ac99d"
+      resolved-ref: ff8112114085b348a2da8d9fc3d3198bcc074659
       url: "https://github.com/JappeOS/jappeos_services.git"
     source: git
     version: "1.0.0+1"
