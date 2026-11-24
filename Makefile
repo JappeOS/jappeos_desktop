@@ -108,9 +108,9 @@ DEBUG_LDFLAGS := $(COMMON_LDFLAGS) -lflutter_engine_debug $(ASAN) -stdlib=libc++
 PROFILE_LDFLAGS := $(COMMON_LDFLAGS) -lflutter_engine_profile -stdlib=libc++ -lc++abi -lpthread
 RELEASE_LDFLAGS := $(COMMON_LDFLAGS) -lflutter_engine_release -stdlib=libc++ -lc++abi -lpthread
 
-DEBUG_LDFLAGS += -L$(BACKEND_BUILD_DIR)/debug -lzenith_backend
-PROFILE_LDFLAGS += -L$(BACKEND_BUILD_DIR)/profile -lzenith_backend
-RELEASE_LDFLAGS += -L$(BACKEND_BUILD_DIR)/release -lzenith_backend
+DEBUG_LDFLAGS += -L$(BACKEND_BUILD_DIR)/debug -lzenith_backend -ldbus-1
+PROFILE_LDFLAGS += -L$(BACKEND_BUILD_DIR)/profile -lzenith_backend -ldbus-1
+RELEASE_LDFLAGS += -L$(BACKEND_BUILD_DIR)/release -lzenith_backend -ldbus-1
 
 $(ENGINE_STAMP):
 	mkdir -p $(DEPS_DIR) $(ENGINE_TMP_DIR)
