@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,6 +39,95 @@ ResolvedApplication resolved({
       ),
     );
 void main() {
+  test('named requests cache size/DPI variants and survive window removal',
+      () async {
+    final dir = Directory.systemTemp.createTempSync('named-icons-');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final file = File('${dir.path}/icon.svg')..writeAsStringSync('<svg/>');
+    final calls = <IconQuery>[];
+    final service = ApplicationIconService((query) async {
+      calls.add(query);
+      return file;
+    });
+    final first = service.requestNamed('system-update', size: 24, dpr: 1.5);
+    expect(first.value, isNull);
+    final sources = await first.future;
+    expect(first.value, same(sources));
+    expect(sources.single.svg, isTrue);
+    expect(sources.single.bytes, await file.readAsBytes());
+    expect(() => sources.clear(), throwsUnsupportedError);
+    service.retainWindows({});
+    expect(
+        service.requestNamed('system-update', size: 24, dpr: 1.5), same(first));
+    await service.requestNamed('system-update', size: 32, dpr: 1.5).future;
+    await service.requestNamed('system-update', size: 24, dpr: 2).future;
+    expect(calls, hasLength(3));
+    expect(calls.first.size, 24);
+    expect(calls.first.scale, 2);
+    service.invalidate();
+    expect(service.requestNamed('system-update', size: 24, dpr: 1.5),
+        isNot(same(first)));
+  });
+
+  test('invalid names skip lookup and broken themes produce empty sources',
+      () async {
+    var calls = 0;
+    final service = ApplicationIconService((_) async {
+      calls++;
+      throw StateError('broken theme');
+    });
+    for (final name in [
+      '',
+      '.',
+      '..',
+      '/tmp/icon.png',
+      'file:///tmp/icon.png',
+      r'a\b'
+    ]) {
+      expect(
+          await service.requestNamed(name, size: 24, dpr: 1).future, isEmpty);
+    }
+    expect(calls, 0);
+    expect(await service.requestNamed('missing', size: 24, dpr: 1).future,
+        isEmpty);
+    expect(calls, 1);
+  });
+
+  test('file requests share loading limits, caching and invalidation',
+      () async {
+    final dir = Directory.systemTemp.createTempSync('file-icons-');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final file = File('${dir.path}/icon.SVG')..writeAsStringSync('<svg/>');
+    final service =
+        ApplicationIconService((_) async => throw StateError('unused'));
+    final first = service.requestFile(file);
+    expect((await first.future).single.svg, isTrue);
+    expect(service.requestFile(File.fromUri(file.uri)), same(first));
+    file.deleteSync();
+    service.invalidate();
+    expect(await service.requestFile(file).future, isEmpty);
+    final oversized = File('${dir.path}/large.png');
+    final handle = oversized.openSync(mode: FileMode.write);
+    handle.truncateSync(8 * 1024 * 1024 + 1);
+    handle.closeSync();
+    expect(await service.requestFile(oversized).future, isEmpty);
+  });
+
+  test('named requests obey LRU eviction and pending invalidation', () async {
+    final pending = Completer<File?>();
+    final service = ApplicationIconService((_) => pending.future);
+    final old = service.requestNamed('old', size: 24, dpr: 1);
+    service.invalidate();
+    final current = service.requestNamed('old', size: 24, dpr: 1);
+    pending.complete(null);
+    await Future.wait([old.future, current.future]);
+    expect(service.requestNamed('old', size: 24, dpr: 1), same(current));
+    for (var i = 0; i < 128; i++) {
+      await service.requestNamed('icon-$i', size: 24, dpr: 1).future;
+    }
+    expect(service.requestNamed('old', size: 24, dpr: 1), isNot(same(current)));
+  });
+
   test('transparent client icons fall back to the desktop entry', () async {
     final dir = Directory.systemTemp.createTempSync('transparent-icons-');
     addTearDown(() => dir.deleteSync(recursive: true));

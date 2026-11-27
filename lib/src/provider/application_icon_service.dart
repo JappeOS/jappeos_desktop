@@ -51,7 +51,7 @@ class ApplicationIconRequest {
   List<ApplicationIconSource>? get value => _value;
 }
 
-/// Service that manages desktop application icons.
+/// Service that manages application, themed, and local-file icon sources.
 /// Caches source data, not widgets or GPU images. Theme policy is supplied by the DE.
 class ApplicationIconService {
   final IconLookup lookup;
@@ -146,24 +146,62 @@ class ApplicationIconService {
       _generation,
     );
 
+    return _requestCached(
+      key,
+      () => _load(app, size, dpr),
+      viewId: app.window?.viewId,
+      revision: metadata?.revision ?? 0,
+    );
+  }
+
+  /// Loads a freedesktop theme name without requiring an application.
+  /// File paths are not names; use [requestFile] for local files.
+  ApplicationIconRequest requestNamed(
+    String name, {
+    required double size,
+    required double dpr,
+  }) =>
+      _requestCached(
+          (name: name, size: size, dpr: dpr, generation: _generation),
+          () async {
+        final sources = <ApplicationIconSource>[];
+        await _addNamed(sources, <String>{}, name, size, dpr, nameOnly: true);
+        return List.unmodifiable(sources);
+      });
+
+  /// Loads a local raster or SVG file using the same limits as theme icons.
+  /// File contents are cached until eviction or [invalidate].
+  ApplicationIconRequest requestFile(File file) => _requestCached(
+        (path: file.absolute.path, generation: _generation),
+        () async {
+          final source = await _readFile(file);
+          return List.unmodifiable([if (source != null) source]);
+        },
+      );
+
+  ApplicationIconRequest _requestCached(
+    Object key,
+    Future<List<ApplicationIconSource>> Function() load, {
+    int? viewId,
+    int revision = 0,
+  }) {
     final cached = _cache.remove(key);
     if (cached != null) {
       _cache[key] = cached;
       return cached;
     }
 
-    final id = app.window?.viewId;
-    if (id != null) {
-      if (_viewRevisions[id] != (metadata?.revision ?? 0)) {
-        for (final previousKey in _viewKeys[id]?.toList() ?? <Object>[]) {
+    if (viewId != null) {
+      if (_viewRevisions[viewId] != revision) {
+        for (final previousKey in _viewKeys[viewId]?.toList() ?? <Object>[]) {
           _remove(previousKey);
         }
       }
-      _viewRevisions[id] = metadata?.revision ?? 0;
-      _viewKeys.putIfAbsent(id, () => <Object>{}).add(key);
+      _viewRevisions[viewId] = revision;
+      _viewKeys.putIfAbsent(viewId, () => <Object>{}).add(key);
     }
 
-    final request = ApplicationIconRequest._(_load(app, size, dpr));
+    final request = ApplicationIconRequest._(load());
     _cache[key] = request;
 
     while (_cache.length > 128) {
@@ -198,6 +236,52 @@ class ApplicationIconService {
     return false;
   }
 
+  Future<ApplicationIconSource?> _readFile(File file) async {
+    try {
+      if (await file.length() > 8 * 1024 * 1024) return null;
+      final bytes = await file.readAsBytes();
+      if (bytes.length > 8 * 1024 * 1024) return null;
+      return ApplicationIconSource.encoded(bytes,
+          svg: file.path.toLowerCase().endsWith('.svg'));
+    } on FileSystemException {
+      // A removed or inaccessible file falls through to the next source.
+      return null;
+    }
+  }
+
+  Future<void> _addNamed(
+    List<ApplicationIconSource> sources,
+    Set<String> paths,
+    String? name,
+    double size,
+    double dpr, {
+    bool nameOnly = false,
+  }) async {
+    if (name == null || name.isEmpty) return;
+    // Client icon names must never resolve to files on the compositor host.
+    if (nameOnly &&
+        (name.contains('/') ||
+            name.contains('\\') ||
+            name == '.' ||
+            name == '..')) {
+      return;
+    }
+    
+    try {
+      final file = await lookup(IconQuery(
+        name: name,
+        size: size.ceil(),
+        scale: dpr.ceil().clamp(1, 8),
+        extensions: const ['png', 'svg'],
+      ));
+      if (file == null || !paths.add(file.path)) return;
+      final source = await _readFile(file);
+      if (source != null) sources.add(source);
+    } catch (_) {
+      // A missing/broken theme must not prevent client or generic fallback.
+    }
+  }
+
   Future<List<ApplicationIconSource>> _load(
     ResolvedApplication app,
     double size,
@@ -206,45 +290,8 @@ class ApplicationIconService {
     final sources = <ApplicationIconSource>[];
     final paths = <String>{};
 
-    Future<void> addNamed(String? name, {bool client = false}) async {
-      if (name == null || name.isEmpty) return;
-
-      // The client protocol names an icon, never a file on the compositor host.
-      if (client &&
-          (name.contains('/') ||
-              name.contains('\\') ||
-              name == '.' ||
-              name == '..')) {
-        return;
-      }
-
-      try {
-        final file = await lookup(
-          IconQuery(
-            name: name,
-            size: size.ceil(),
-            scale: dpr.ceil().clamp(1, 8),
-            extensions: const ['png', 'svg'],
-          ),
-        );
-
-        if (file == null || !paths.add(file.path)) return;
-        if (await file.length() > 8 * 1024 * 1024) return;
-
-        sources.add(
-          ApplicationIconSource.encoded(
-            await file.readAsBytes(),
-            svg: file.path.toLowerCase().endsWith('.svg'),
-          ),
-        );
-      } on FileSystemException {
-        // A removed file falls through to the next source.
-      } catch (_) {
-        // A missing/broken theme must not prevent client or generic fallback.
-      }
-    }
-
-    await addNamed(app.window?.metadata.iconName, client: true);
+    await _addNamed(sources, paths, app.window?.metadata.iconName, size, dpr,
+        nameOnly: true);
 
     for (final image in orderedImages(
       app.window?.metadata.images ?? const [],
@@ -256,7 +303,8 @@ class ApplicationIconService {
       }
     }
 
-    await addNamed(app.entry?.entries[DesktopEntryKey.icon.string]?.value);
+    await _addNamed(sources, paths,
+        app.entry?.entries[DesktopEntryKey.icon.string]?.value, size, dpr);
     return List.unmodifiable(sources);
   }
 }

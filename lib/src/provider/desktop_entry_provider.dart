@@ -140,7 +140,18 @@ class DesktopEntryProvider extends ChangeNotifier {
 
   Future<FreedesktopIconTheme> _loadThemes() async {
     final themeList = await FreedesktopIconTheme.installedThemes;
-    const preferredThemes = ['Papirus-Dark', 'Papirus-Light', 'Papirus'];
+
+    // TODO: Select preferred icon theme via settings in JappeOS
+    // Prefer a general-purpose theme before hicolor, which may contain only
+    // application icons. Filesystem discovery order is not a theme preference.
+    const preferredThemes = [
+      'Papirus-Dark',
+      'Papirus-Light',
+      'Papirus',
+      'Adwaita',
+      'Yaru',
+      'hicolor',
+    ];
 
     final selectedTheme = preferredThemes.firstWhereOrNull(themeList.contains) ??
         themeList.firstOrNull;

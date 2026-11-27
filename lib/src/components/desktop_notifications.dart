@@ -21,8 +21,10 @@ import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Notification;
 
 import '../constants.dart';
-import 'application_icon.dart';
+import '../provider/application_icon_service.dart';
+import '../provider/desktop_entry_provider.dart';
 import 'desktop_container.dart';
+import 'mixed_icon.dart';
 
 /// A widget that displays the notification area on the desktop, showing
 /// notifications provided by the [NotificationManagerService] as overlays.
@@ -148,8 +150,10 @@ class _ProvidedNotificationContentState extends State<ProvidedNotificationConten
   @override
   Widget build(BuildContext context) {
     return NotificationContent.basic(
+      iconName: widget.notification.appIcon,
       title: widget.notification.appName,
-      contentText: widget.notification.body,
+      contentText: widget.notification.summary +
+          (widget.notification.body.isNotEmpty ? "\n${widget.notification.body}" : ""),
       onClose: () async {
         try {
           await context.read<NotificationManagerService>()
@@ -167,7 +171,7 @@ class _ProvidedNotificationContentState extends State<ProvidedNotificationConten
 /// customizable properties. Use [ProvidedNotificationContent] to display
 /// a notification provided by the [NotificationManagerService].
 class NotificationContent extends StatefulWidget {
-  final ApplicationIcon? appIcon;
+  final String? iconName;
   final Image? smallImage;
   final String source;
   final String contentText;
@@ -177,7 +181,7 @@ class NotificationContent extends StatefulWidget {
   final EdgeInsetsGeometry? padding;
 
   factory NotificationContent.basic({
-    ApplicationIcon? appIcon,
+    String? iconName,
     Image? smallImage,
     required String title,
     required String contentText,
@@ -186,7 +190,7 @@ class NotificationContent extends StatefulWidget {
     EdgeInsetsGeometry? padding,
   }) {
     return NotificationContent._(
-      appIcon: appIcon,
+      iconName: iconName,
       smallImage: smallImage,
       source: title,
       contentText: contentText,
@@ -197,14 +201,14 @@ class NotificationContent extends StatefulWidget {
   }
 
   factory NotificationContent.media({
-    ApplicationIcon? appIcon,
+    String? iconName,
     Image? smallImage,
     required String title,
     required String contentText,
     EdgeInsetsGeometry? padding,
   }) {
     return NotificationContent._(
-      appIcon: appIcon,
+      iconName: iconName,
       smallImage: smallImage,
       source: title,
       contentText: contentText,
@@ -214,7 +218,7 @@ class NotificationContent extends StatefulWidget {
   }
 
   const NotificationContent._({
-    this.appIcon,
+    this.iconName,
     this.smallImage,
     required this.source,
     required this.contentText,
@@ -251,20 +255,21 @@ class _NotificationContentState extends State<NotificationContent> {
     variance: ButtonVariance.secondary,
   ) : const SizedBox.shrink();
 
-  Widget _buildAppIcon(ThemeData theme) => SizedBox.square(
-    dimension: 20 * theme.scaling,
-    child: widget.appIcon
-        ?? Icon(
-            Icons.notifications,
-            size: 20 * theme.scaling,
-            color: theme.colorScheme.mutedForeground,
-          ),
+  Widget _buildAppIcon(
+    ThemeData theme,
+    ApplicationIconService service,
+  ) => MixedIcon(
+    widget.iconName,
+    service: service,
+    size: 20 * theme.scaling,
+    color: theme.colorScheme.mutedForeground,
   );
 
   @override
   Widget build(BuildContext context) {
     final bool isExpandable = widget.actions.isNotEmpty;
     final theme = Theme.of(context);
+    final desktopEntryProvider = context.watch<DesktopEntryProvider>();
 
     return MouseRegion(
       onEnter: (_) {
@@ -294,7 +299,7 @@ class _NotificationContentState extends State<NotificationContent> {
                     spacing: 8 * theme.scaling,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildAppIcon(theme),
+                      _buildAppIcon(theme, desktopEntryProvider.icons),
                       Expanded(
                         child: Text(widget.source).small().medium().muted(),
                       ),
