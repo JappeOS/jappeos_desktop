@@ -25,6 +25,7 @@ import '../provider/application_icon_service.dart';
 import '../provider/desktop_entry_provider.dart';
 import 'desktop_container.dart';
 import 'mixed_icon.dart';
+import 'time_ago.dart';
 
 /// A widget that displays the notification area on the desktop, showing
 /// notifications provided by the [NotificationManagerService] as overlays.
@@ -35,30 +36,117 @@ class DesktopNotificationArea extends StatefulWidget {
   State<DesktopNotificationArea> createState() => _DesktopNotificationAreaState();
 }
 
-class _DesktopNotificationAreaState extends State<DesktopNotificationArea> {
+class _DesktopNotificationAreaState extends State<DesktopNotificationArea>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  Notification? _displayed;
+  Notification? _target;
+  bool _exiting = false;
+  double _exitOpacity = 1;
+  double _exitScale = 1;
+  double _exitOffset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: kDefaultDuration)
+      ..addStatusListener(_onAnimationStatus);
+  }
+
+  double get _progress => (_exiting ? Curves.easeInCubic : Curves.easeOutCubic)
+      .transform(_controller.value);
+  double get _opacity =>
+      _exiting ? _exitOpacity * (1 - _progress) : _progress;
+  double get _scale => _exiting
+      ? _exitScale * (1 - 0.15 * _progress)
+      : 0.94 + 0.06 * _progress;
+  double get _offset => _exiting ? _exitOffset : -0.35 * (1 - _progress);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final notifications =
+        context.watch<NotificationManagerService>().notifications;
+    _target = notifications.isEmpty ? null : notifications.last;
+
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      _controller.stop();
+      _exiting = false;
+      _displayed = _target;
+      _controller.value = 1;
+      return;
+    }
+
+    // While exiting, only replace the pending target. Intermediate arrivals
+    // must not restart the exit or show notifications that have since vanished.
+    if (_exiting) return;
+    if (_displayed == null) {
+      _showTarget();
+    } else if (_displayed!.path == _target?.path) {
+      // A new snapshot of the same notification updates in place.
+      _displayed = _target;
+    } else {
+      // Capture the current appearance so an interrupted entrance does not jump.
+      _exitOpacity = _opacity;
+      _exitScale = _scale;
+      _exitOffset = _offset;
+      _exiting = true;
+      _controller.forward(from: 0);
+    }
+  }
+
+  void _showTarget() {
+    _exiting = false;
+    _displayed = _target;
+    if (_displayed != null) _controller.forward(from: 0);
+  }
+
+  void _onAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed && _exiting) {
+      setState(_showTarget);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final notification = _displayed;
     return Positioned(
       top: DSKTP_UI_LAYER_TOPBAR_HEIGHT + (8 * theme.scaling),
       right: 8 * theme.scaling,
       width: 350 * theme.scaling,
-      child: Column(
-        children: [
-          // Single notification for now.
-          Selector<NotificationManagerService, List<Notification>>(
-            selector: (_, provider) => provider.notifications,
-            builder: (context, data, _) {
-              if (data.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return DesktopOverlayContainer(
-                child: ProvidedNotificationContent(notification: data.last),
-              );
-            },
-          ),
-        ],
-      ),
+      child: notification == null
+          ? const SizedBox.shrink()
+          : AnimatedBuilder(
+              animation: _controller,
+              child: DesktopOverlayContainer(
+                key: ValueKey(notification.path),
+                child: ProvidedNotificationContent(notification: notification),
+              ),
+              builder: (context, child) => IgnorePointer(
+                ignoring: _exiting || _controller.value == 0,
+                child: ExcludeSemantics(
+                  excluding: _exiting || _controller.value == 0,
+                  child: Opacity(
+                    opacity: _opacity,
+                    child: FractionalTranslation(
+                      translation: Offset(0, _offset),
+                      child: Transform.scale(
+                        scale: _scale,
+                        alignment: Alignment.topCenter,
+                        child: child,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }
@@ -150,6 +238,7 @@ class _ProvidedNotificationContentState extends State<ProvidedNotificationConten
   @override
   Widget build(BuildContext context) {
     return NotificationContent.basic(
+      dateTime: widget.notification.time,
       iconName: widget.notification.appIcon,
       title: widget.notification.appName,
       contentText: widget.notification.summary +
@@ -171,6 +260,7 @@ class _ProvidedNotificationContentState extends State<ProvidedNotificationConten
 /// customizable properties. Use [ProvidedNotificationContent] to display
 /// a notification provided by the [NotificationManagerService].
 class NotificationContent extends StatefulWidget {
+  final DateTime? dateTime;
   final String? iconName;
   final Image? smallImage;
   final String source;
@@ -181,6 +271,7 @@ class NotificationContent extends StatefulWidget {
   final EdgeInsetsGeometry? padding;
 
   factory NotificationContent.basic({
+    DateTime? dateTime,
     String? iconName,
     Image? smallImage,
     required String title,
@@ -190,6 +281,7 @@ class NotificationContent extends StatefulWidget {
     EdgeInsetsGeometry? padding,
   }) {
     return NotificationContent._(
+      dateTime: dateTime,
       iconName: iconName,
       smallImage: smallImage,
       source: title,
@@ -218,6 +310,7 @@ class NotificationContent extends StatefulWidget {
   }
 
   const NotificationContent._({
+    this.dateTime,
     this.iconName,
     this.smallImage,
     required this.source,
@@ -300,9 +393,15 @@ class _NotificationContentState extends State<NotificationContent> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildAppIcon(theme, desktopEntryProvider.icons),
-                      Expanded(
-                        child: Text(widget.source).small().medium().muted(),
-                      ),
+                      Text(widget.source).small().medium().muted(),
+                      if (widget.dateTime != null)
+                        TimeAgo(
+                          dateTime: widget.dateTime!,
+                          style: theme.typography.xSmall.copyWith(
+                            color: theme.colorScheme.mutedForeground,
+                          ),
+                        ),
+                      Spacer(),
                       if (isExpandable)
                         _arrowIconButton(() => setState(() => _expanded = !_expanded)),
                       if (!widget.isMedia)

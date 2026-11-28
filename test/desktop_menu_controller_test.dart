@@ -41,6 +41,46 @@ Future<void> _mount(
 
 void main() {
   testWidgets(
+      'height limit respects the actual overlay and repositions growing menus',
+      (tester) async {
+    final controller = DesktopMenuController();
+    final height = ValueNotifier(100.0);
+    addTearDown(controller.dispose);
+    addTearDown(height.dispose);
+    final menu = _Menu(
+        child: ValueListenableBuilder<double>(
+      valueListenable: height,
+      builder: (_, value, __) => SizedBox(width: 100, height: value),
+    ));
+    await tester.pumpWidget(Directionality(
+      textDirection: TextDirection.ltr,
+      child: Stack(children: [
+        Positioned.fill(
+            top: 40,
+            child: DesktopMenuWidget(
+              controller: controller,
+              monitor: const MonitorConfig(
+                  id: 'test', bounds: Rect.fromLTWH(0, 0, 800, 600)),
+            )),
+      ]),
+    ));
+    controller.openMenu(menu, position: const Offset(400, 550));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.byWidget(menu)).bottom, closeTo(592, 0.01));
+    height.value = 2000;
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byWidget(menu)).height, 544);
+    expect(tester.getRect(find.byWidget(menu)).top, closeTo(48, 0.01));
+    expect(tester.getRect(find.byWidget(menu)).bottom, closeTo(592, 0.01));
+    height.value = 200;
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byWidget(menu)).height, 200);
+    expect(tester.getRect(find.byWidget(menu)).bottom, closeTo(592, 0.01));
+    controller.closeMenu();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets(
       'context menu checkbox keeps both menus open, outside closes them',
       (tester) async {
     final controller = DesktopMenuController();

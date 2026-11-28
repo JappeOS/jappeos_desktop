@@ -126,6 +126,9 @@ class DesktopMenuWidget extends StatefulWidget {
 
 class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
     with SingleTickerProviderStateMixin {
+  static const double _menuPadding = 8;
+  Size _availableSize = Size.zero;
+
   late final AnimationController _animationController;
   late final Animation<double> _fade;
   late final Animation<double> _scale;
@@ -208,10 +211,10 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
   }
 
   void _computePosition(DesktopMenu menu) {
-    final bounds = widget.monitor.usableBounds;
+    final bounds = _availableSize;
     final anchor = _anchorPosition;
 
-    const double pad = 8;
+    const double pad = _menuPadding;
 
     if (menu is FullscreenDesktopMenu) {
       _position = Offset.zero;
@@ -227,7 +230,10 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
     }
 
     // Regular anchored menu
-    if (anchor == null) return;
+    if (anchor == null) {
+      _position = const Offset(pad, pad);
+      return;
+    }
 
     double left = anchor.dx - _menuSize.width / 2;
     double top = anchor.dy - _menuSize.height / 2;
@@ -244,86 +250,105 @@ class _DesktopMenuWidgetState extends State<DesktopMenuWidget>
     _position = Offset(left, top);
   }
 
+  void _measureMenu(BuildContext context, DesktopMenu menu) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !context.mounted || !identical(menu, _menu)) return;
+      final box = context.findRenderObject() as RenderBox?;
+      if (box == null || !box.hasSize || box.size == _menuSize) return;
+      setState(() {
+        _menuSize = box.size;
+        _computePosition(menu);
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final menu = _menu;
     if (menu == null) return const SizedBox.shrink();
 
-    return IgnorePointer(
-      ignoring: !identical(menu, widget.controller.currentMenu),
-      child: AnimatedBuilder(
-        animation: _animationController,
-        child: KeyedSubtree(
-          key: ValueKey(menu), // preserves state
-          child: _DesktopMenuTapGroup(
-            groupId: menu,
-            child: RepaintBoundary(child: menu),
+    return LayoutBuilder(builder: (context, constraints) {
+      final usable = widget.monitor.usableBounds;
+      _availableSize = Size(
+        usable.width.min(constraints.maxWidth),
+        usable.height.min(constraints.maxHeight),
+      );
+      _computePosition(menu);
+      return IgnorePointer(
+        ignoring: !identical(menu, widget.controller.currentMenu),
+        child: AnimatedBuilder(
+          animation: _animationController,
+          child: KeyedSubtree(
+            key: ValueKey(menu), // preserves state
+            child: _DesktopMenuTapGroup(
+              groupId: menu,
+              child: RepaintBoundary(child: menu),
+            ),
           ),
-        ),
-        builder: (context, child) {
-          return Stack(
-            children: [
-              /// Positioned menu
-              Builder(
-                builder: (context) {
-                  return Positioned(
-                    left: _position?.dx ?? 0,
-                    top: _position?.dy ?? 0,
-                    child: TapRegion(
-                      groupId: menu,
-                      enabled: identical(menu, widget.controller.currentMenu),
-                      onTapOutside: (_) => widget.controller.closeMenu(),
-                      behavior: HitTestBehavior.translucent,
-                      child: SlideTransition(
-                        position: _slide,
-                        child: ScaleTransition(
-                          scale: _scale,
-                          child: FadeTransition(
-                            opacity: _fade,
-                            child: Builder(
-                              builder: (context) {
-                                final capturedMenu = menu;
-                                WidgetsBinding.instance
-                                    .addPostFrameCallback((_) {
-                                  if (!mounted ||
-                                      !context.mounted ||
-                                      !identical(capturedMenu, _menu)) {
-                                    return;
-                                  }
-                                  final box =
-                                      context.findRenderObject() as RenderBox?;
-                                  if (box == null) return;
-                                  final newSize = box.size;
-                                  if (newSize != _menuSize) {
-                                    _menuSize = newSize;
-                                    _computePosition(capturedMenu);
-                                    setState(() {});
-                                  }
-                                });
+          builder: (context, child) {
+            return Stack(
+              children: [
+                /// Positioned menu
+                Builder(
+                  builder: (context) {
+                    return Positioned(
+                      left: _position?.dx ?? 0,
+                      top: _position?.dy ?? 0,
+                      child: TapRegion(
+                        groupId: menu,
+                        enabled: identical(menu, widget.controller.currentMenu),
+                        onTapOutside: (_) => widget.controller.closeMenu(),
+                        behavior: HitTestBehavior.translucent,
+                        child: SlideTransition(
+                          position: _slide,
+                          child: ScaleTransition(
+                            scale: _scale,
+                            child: FadeTransition(
+                              opacity: _fade,
+                              child: Builder(
+                                builder: (context) {
+                                  _measureMenu(context, menu);
 
-                                if (menu is FullscreenDesktopMenu) {
-                                  final bounds = widget.monitor.usableBounds;
-                                  return SizedBox(
-                                    width: bounds.width,
-                                    height: bounds.height,
-                                    child: child!,
+                                  if (menu is FullscreenDesktopMenu) {
+                                    final bounds = _availableSize;
+                                    return SizedBox(
+                                      width: bounds.width,
+                                      height: bounds.height,
+                                      child: child!,
+                                    );
+                                  }
+
+                                  return NotificationListener<
+                                      SizeChangedLayoutNotification>(
+                                    onNotification: (_) {
+                                      _measureMenu(context, menu);
+                                      return false;
+                                    },
+                                    child: SizeChangedLayoutNotifier(
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          maxHeight: (_availableSize.height -
+                                                  2 * _menuPadding)
+                                              .max(0),
+                                        ),
+                                        child: child!,
+                                      ),
+                                    ),
                                   );
-                                }
-
-                                return child!;
-                              },
+                                },
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          );
-        },
-      ),
-    );
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    });
   }
 }
