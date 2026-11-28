@@ -393,14 +393,21 @@ class _NotificationContentState extends State<NotificationContent> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildAppIcon(theme, desktopEntryProvider.icons),
-                      Text(widget.source).small().medium().muted(),
-                      if (widget.dateTime != null)
-                        TimeAgo(
-                          dateTime: widget.dateTime!,
-                          style: theme.typography.xSmall.copyWith(
-                            color: theme.colorScheme.mutedForeground,
-                          ),
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        spacing: 8 * theme.scaling,
+                        children: [
+                          Text(widget.source).small().medium().muted(),
+                          if (widget.dateTime != null)
+                            TimeAgo(
+                              dateTime: widget.dateTime!,
+                              style: theme.typography.xSmall.copyWith(
+                                color: theme.colorScheme.mutedForeground,
+                              ),
+                            ),
+                        ],
+                      ),
                       Spacer(),
                       if (isExpandable)
                         _arrowIconButton(() => setState(() => _expanded = !_expanded)),
